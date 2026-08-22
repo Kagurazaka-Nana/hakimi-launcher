@@ -16,11 +16,10 @@
     </properties>
 
     <dependencies>
-        <!-- Jackson 全套：帮你把 Mojang JSON 变成 Java 对象 -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.18.2</version>
+            <version>2.22.2</version>
         </dependency>
     </dependencies>
 </project>
