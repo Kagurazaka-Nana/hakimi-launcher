@@ -34,4 +34,4 @@ build/
 Thumbs.db
 
 # Project Specific Ignores
-./temp/
+temp/
