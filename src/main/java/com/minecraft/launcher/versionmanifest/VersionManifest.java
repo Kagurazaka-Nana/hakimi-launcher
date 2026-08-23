@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
+import java.util.Optional;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class VersionManifest {
@@ -33,8 +34,20 @@ public class VersionManifest {
     public Latest getLatest() {
         return this.latest;
     }
-    public List<VersionInfo> getVersions() {
-        return this.versions;
+
+    public Optional<VersionInfo> findVersionById(String id) {
+        if (id == null || versions == null) {
+            return Optional.empty();
+        }
+        return versions.stream()
+                .filter(v -> id.equalsIgnoreCase(v.getId()))
+                .findFirst();
+    }
+    public Optional<VersionInfo> getLatestRelease() {
+        if (latest == null || latest.getRelease() == null) {
+            return Optional.empty();
+        }
+        return findVersionById(latest.getRelease());
     }
 
     public VersionManifest(@JsonProperty("latest") Latest latest,

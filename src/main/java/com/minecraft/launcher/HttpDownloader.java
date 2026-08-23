@@ -54,14 +54,12 @@ public class HttpDownloader {
                 .build();
     }
 
-    public void downloadFile(String url, String fileDestination) throws IOException, InterruptedException {
+    public void downloadFile(String url, Path fileDestination) throws IOException, InterruptedException {
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(readTimeout))
                 .setHeader("User-Agent", userAgent)
                 .build();
-
-        Path path = Paths.get(fileDestination);
 
         HttpResponse<InputStream> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofInputStream());
 
@@ -75,14 +73,14 @@ public class HttpDownloader {
             }
         }
 
-        if (path.getParent() != null) {
-            Files.createDirectories(path.getParent());
+        if (fileDestination.getParent() != null) {
+            Files.createDirectories(fileDestination.getParent());
         }
 
         try (InputStream in = resp.body()) {
-            Files.copy(in, path, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(in, fileDestination, StandardCopyOption.REPLACE_EXISTING);
         } catch (Exception e) {
-            Files.deleteIfExists(path);
+            Files.deleteIfExists(fileDestination);
             throw e;
         }
     }

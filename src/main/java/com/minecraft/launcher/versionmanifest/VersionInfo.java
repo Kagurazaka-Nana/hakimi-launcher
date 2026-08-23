@@ -3,6 +3,8 @@ package com.minecraft.launcher.versionmanifest;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.Optional;
+
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class VersionInfo {
 
@@ -40,8 +42,8 @@ public class VersionInfo {
 
     // 整型: complianceLevel（仅v2）：如果为0，启动器会警告用户此版本因老旧而不足以支持最新的玩家安全特性。其他情况为1。
     // https://zh.minecraft.wiki/w/Version_manifest.json#JSON%E6%A0%BC%E5%BC%8F
-    public boolean isLegacy() {
-        return this.complianceLevel != null && this.complianceLevel == 0;
+    public static boolean isLegacy(VersionInfo version) {
+        return version.getComplianceLevel() != null && version.getComplianceLevel() == 0;
     }
 
     public VersionInfo(@JsonProperty("id") String id,

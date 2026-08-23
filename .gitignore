@@ -32,3 +32,6 @@ build/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Project Specific Ignores
+./temp/

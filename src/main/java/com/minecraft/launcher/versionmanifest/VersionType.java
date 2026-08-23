@@ -8,6 +8,6 @@ public enum VersionType {
     @JsonProperty("release") RELEASE,
     @JsonProperty("snapshot") SNAPSHOT,
     @JsonProperty("old_beta") OLD_BETA,
-    @JsonProperty("old_alpha") OLD_ALPHA;
+    @JsonProperty("old_alpha") OLD_ALPHA
 
 }
