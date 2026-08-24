@@ -1,10 +1,9 @@
 package com.minecraft.launcher;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.minecraft.launcher.versionmanifest.VersionInfo;
-import com.minecraft.launcher.versionmanifest.VersionManifest;
+import com.minecraft.launcher.model.manifest.VersionInfo;
+import com.minecraft.launcher.model.manifest.VersionManifest;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class Main {

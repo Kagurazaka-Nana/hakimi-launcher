@@ -1,7 +1,6 @@
-package com.minecraft.launcher.versionmanifest;
+package com.minecraft.launcher.model.manifest;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum VersionType {
 
