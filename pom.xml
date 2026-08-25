@@ -16,10 +16,19 @@
     </properties>
 
     <dependencies>
+        <!-- Source: https://mvnrepository.com/artifact/tools.jackson.core/jackson-databind -->
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
+            <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.22.2</version>
+            <version>3.2.2</version>
+            <scope>compile</scope>
+        </dependency>
+        <!-- Source: https://mvnrepository.com/artifact/net.java.dev.jna/jna -->
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+            <version>5.19.1</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 </project>
