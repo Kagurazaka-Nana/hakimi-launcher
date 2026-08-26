@@ -2,6 +2,10 @@ package com.minecraft.launcher.model.rule;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 public class Features {
 
     private final Boolean isDemoUser;
@@ -10,6 +14,8 @@ public class Features {
     private final Boolean isQuickPlaySingleplayer;
     private final Boolean isQuickPlayMultiplayer;
     private final Boolean isQuickPlayRealms;
+
+    private final Map<String, Boolean> featureMap;
 
     public Features(@JsonProperty("is_demo_user") Boolean isDemoUser,
                     @JsonProperty("has_custom_resolution") Boolean hasCustomResolution,
@@ -23,6 +29,29 @@ public class Features {
         this.isQuickPlaySingleplayer = isQuickPlaySingleplayer;
         this.isQuickPlayMultiplayer = isQuickPlayMultiplayer;
         this.isQuickPlayRealms = isQuickPlayRealms;
+
+        Map<String, Boolean> map = new HashMap<>(6);
+        putIfNotNull(map, "is_demo_user", isDemoUser);
+        putIfNotNull(map, "has_custom_resolution", hasCustomResolution);
+        putIfNotNull(map, "has_quick_plays_support", hasQuickPlaysSupport);
+        putIfNotNull(map, "is_quick_play_singleplayer", isQuickPlaySingleplayer);
+        putIfNotNull(map, "is_quick_play_multiplayer", isQuickPlayMultiplayer);
+        putIfNotNull(map, "is_quick_play_realms", isQuickPlayRealms);
+
+        this.featureMap = Collections.unmodifiableMap(map);
+    }
+
+    private static void putIfNotNull(
+            Map<String, Boolean> map,
+            String key,
+            Boolean value) {
+        if (value != null) {
+            map.put(key, value);
+        }
+    }
+
+    public Map<String, Boolean> toMap() {
+        return featureMap;
     }
 
     public Boolean getIsDemoUser() {
