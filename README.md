@@ -47,7 +47,10 @@ launcher/
    mvn clean package
 
 3. 拍拍屁股启动！
-   java -jar target/launcher-1.0-SNAPSHOT.jar
+   java --enable-native-access=ALL-UNNAMED -jar target/launcher-1.0-SNAPSHOT.jar
+
+> 🐱 **喵提示**：如果用的是 JDK 22+，启动时必须带上 `--enable-native-access=ALL-UNNAMED`。
+> 否则 JNA 加载 `ntdll.dll` 获取精确系统版本时会打印 restricted method 警告，未来版本甚至会被直接禁止调用喵～
 
 ---
 
