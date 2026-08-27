@@ -43,6 +43,7 @@ public class VersionManifest {
                 .filter(v -> id.equalsIgnoreCase(v.getId()))
                 .findFirst();
     }
+
     public Optional<VersionInfo> getLatestRelease() {
         if (latest == null || latest.getRelease() == null) {
             return Optional.empty();
