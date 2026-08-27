@@ -36,3 +36,4 @@ Thumbs.db
 # Project Specific Ignores
 temp/
 .docs/
+launcherTest/
