@@ -96,8 +96,11 @@ public class RuleEvaluator {
 
         if(candidate == null) return false;
 
+        // Mojang 的 os.version 是前缀正则（如 "^10\\." 用于 Win10 检测），
+        // 必须用 find() 前缀匹配，而不能用 matches() 全串匹配——
+        // 否则 "^10\\." 对 "10.0.19045" 会因无法消费整串而错误地返回 false。
         Pattern pattern = PATTERN_CACHE.computeIfAbsent(regex, Pattern::compile);
-        return pattern.matcher(candidate).matches();   // 注意是 matches() 全匹配，不是 find()
+        return pattern.matcher(candidate).find();
     }
 
     private Action defaultAction(Rule first) {
