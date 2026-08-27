@@ -35,5 +35,5 @@ Thumbs.db
 
 # Project Specific Ignores
 temp/
-.docs/
+docs/
 launcherTest/
