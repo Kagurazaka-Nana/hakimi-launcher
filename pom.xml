@@ -85,6 +85,12 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
             </plugin>
+            <!-- Source: https://mvnrepository.com/artifact/org.codehaus.mojo/sonar-maven-plugin/ -->
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>4.0.0.4121</version>
+            </plugin>
             <!-- Source: https://docs.sonarsource.com/sonarqube-cloud/analyzing-source-code/test-coverage/java-test-coverage#add-coverage-in-a-single-module-maven-project-->
             <plugin>
                 <groupId>org.jacoco</groupId>
