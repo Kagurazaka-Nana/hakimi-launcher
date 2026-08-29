@@ -40,5 +40,6 @@ launcherTest/
 .m2/
 
 # Project Agent files
-PROJECT.md
+AGENTS.md
 .mcp.json
+.pi/
