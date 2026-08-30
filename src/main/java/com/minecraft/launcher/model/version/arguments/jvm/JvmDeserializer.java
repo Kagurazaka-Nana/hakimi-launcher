@@ -1,4 +1,4 @@
-package com.minecraft.launcher.model.version.arguments.game;
+package com.minecraft.launcher.model.version.arguments.jvm;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -8,15 +8,15 @@ import com.minecraft.launcher.model.rule.Rule;
 import java.io.IOException;
 import java.util.List;
 
-public class GameDeserializer extends JsonDeserializer<Game> {
+public class JvmDeserializer extends JsonDeserializer<Jvm> {
 
     @Override
-    public Game deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException {
+    public Jvm deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException {
         ObjectMapper mapper = (ObjectMapper) jsonParser.getCodec();
         JsonNode root = jsonParser.readValueAsTree();
 
         if(root.isTextual()) {
-            return new Game(List.of(root.asText()), null);
+            return new Jvm(List.of(root.asText()), null);
         }
 
         JsonNode rulesNode = root.get("rules");
@@ -31,9 +31,9 @@ public class GameDeserializer extends JsonDeserializer<Game> {
         if (val.isArray()) {
             List<String> value = mapper.convertValue(val,
                     new TypeReference<>() {});
-            return new Game(value, rules);
+            return new Jvm(value, rules);
         }
-        return new Game(List.of(val.asText()), rules);
+        return new Jvm(List.of(val.asText()), rules);
     }
 
 }
