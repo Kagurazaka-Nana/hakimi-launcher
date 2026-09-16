@@ -38,8 +38,3 @@ temp/
 docs/
 launcherTest/
 .m2/
-
-# Project Agent files
-AGENTS.md
-.mcp.json
-.pi/

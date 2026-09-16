@@ -6,6 +6,7 @@ import com.minecraft.launcher.model.version.arguments.defaultuserjvm.DefaultUser
 import com.minecraft.launcher.model.version.arguments.game.Game;
 import com.minecraft.launcher.model.version.arguments.game.GameDeserializer;
 import com.minecraft.launcher.model.version.arguments.jvm.Jvm;
+import com.minecraft.launcher.model.version.arguments.jvm.JvmDeserializer;
 import lombok.Getter;
 
 import java.util.List;
@@ -16,6 +17,7 @@ public class Arguments {
     private final List<DefaultUserJvm> defaultUserJvm;
     @JsonDeserialize(contentUsing = GameDeserializer.class)
     private final List<Game> game;
+    @JsonDeserialize(contentUsing = JvmDeserializer.class)
     private final List<Jvm> jvm;
 
     public Arguments(@JsonProperty("default-user-jvm") List<DefaultUserJvm> defaultUserJvm,

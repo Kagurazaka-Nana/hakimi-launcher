@@ -8,10 +8,10 @@ import java.util.List;
 @Getter
 public class Game {
 
-    private final Object value;
+    private final List<String> value;
     private final List<Rule> rules;
 
-    public Game(Object value,
+    public Game(List<String> value,
                 List<Rule> rules) {
         this.value = value;
         this.rules = rules;

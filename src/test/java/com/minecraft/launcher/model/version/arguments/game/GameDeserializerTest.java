@@ -58,11 +58,16 @@ class GameDeserializerTest {
     @Test
     void testJson() {
         assertNull(g.getFirst().getRules());
-        assertEquals("--arg1", g.getFirst().getValue());
+        assertEquals(List.of("--arg1"), g.getFirst().getValue());
         assertFalse(g.get(1).getRules().isEmpty());
-        assertInstanceOf(String.class, g.get(1).getValue());
+        assertInstanceOf(List.class, g.get(1).getValue());
+        assertEquals(List.of("--demo"), g.get(1).getValue());
         assertFalse(g.get(2).getRules().isEmpty());
         assertInstanceOf(List.class, g.get(2).getValue());
+        assertEquals(List.of("--width",
+                             "${resolution_width}",
+                             "--height",
+                             "${resolution_height}"), g.get(2).getValue());
     }
 
 }
