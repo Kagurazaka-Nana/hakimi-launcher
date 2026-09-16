@@ -51,7 +51,8 @@ public class Main {
 
         logger.info("Start download client.json of the latest release");
         downloadLatestReleaseMeta(manifest);
-
+        GameStart gameStart = new GameStart();
+        gameStart.gameStart();
     }
 
     private static void downloadLatestReleaseMeta(VersionManifest manifest) throws IOException, InterruptedException {
