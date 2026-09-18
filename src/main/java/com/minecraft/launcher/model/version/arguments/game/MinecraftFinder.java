@@ -143,20 +143,34 @@ public class MinecraftFinder {
         });
     }
 
-    public String GamePathSelecter(){
+    public Optional<String> GamePathSelecter(){
         Scanner scanner = new Scanner(System.in);
         List<String> Path = scanAll(null,new AtomicBoolean(false),null);
         if (Path.isEmpty()) {
             System.err.println("未在找到任何游戏路径。");
-            return null;
+            return Optional.empty();
         }else{
             System.out.println("\n[检测到的游戏路径]:");
             for (int i = 0; i < Path.size(); i++) {
                 System.out.println((i + 1) + ". " + Path.get(i));
             }
-            System.out.print("请选择要启动的版本编号 (1-" + Path.size() + "): ");
-            int versionChoice = scanner.nextInt() - 1;
-            return Path.get(Math.max(0, Math.min(versionChoice, Path.size() - 1)));
+            while (true) {
+                System.out.print("请选择要启动的版本编号 (1-" + Path.size() + "): ");
+                //int versionChoice = scanner.nextInt() - 1;
+                if (!scanner.hasNextInt()) {
+                    scanner.nextLine(); // 吃掉非法 token，否则死循环
+                    System.out.println("请输入数字。");
+                    continue;
+                }
+                int choice = scanner.nextInt();
+                scanner.nextLine(); // 吃掉换行
+                if (choice < 1 || choice > Path.size()) {
+                    System.out.println("编号超出范围，请重新输入。");
+                    continue;
+                }
+                return Optional.of(Path.get(choice - 1));
+                //return Path.get(Math.max(0, Math.min(versionChoice, Path.size() - 1)));
+            }
         }
 
     }

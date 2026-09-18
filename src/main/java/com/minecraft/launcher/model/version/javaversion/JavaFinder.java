@@ -3,9 +3,10 @@ package com.minecraft.launcher.model.version.javaversion;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Scanner;
 
-public class JavaFander {
+public class JavaFinder {
 
     // 递归查找 javaw.exe 辅助函数（限制深度为 4，防止全盘扫描变卡）
     private static void searchJavaw(File dir, List<String> javaPaths, int depth) {
@@ -65,7 +66,7 @@ public class JavaFander {
         return javaPaths;
     }
 
-    public String JavaVersionSelector(){
+    public Optional<String> JavaVersionSelector(){
 
         Scanner scanner = new Scanner(System.in);
         List<String> javaPaths = detectJavaPaths();
@@ -74,15 +75,29 @@ public class JavaFander {
         if (javaPaths.isEmpty()) {
             System.out.print("\n未自动检测到 Java，请手动输入 javaw.exe 的完整路径: ");
             scanner.nextLine(); // 吃掉换行符
-            return scanner.nextLine().trim();
+            return scanner.nextLine().trim().describeConstable();
         } else {
             System.out.println("\n[检测到的 Java 运行环境]:");
             for (int i = 0; i < javaPaths.size(); i++) {
                 System.out.println((i + 1) + ". " + javaPaths.get(i));
             }
-            System.out.print("请选择 Java 路径编号 (1-" + javaPaths.size() + "): ");
-            int javaChoice = scanner.nextInt() - 1;
-            return javaPaths.get(Math.max(0, Math.min(javaChoice, javaPaths.size() - 1)));
+            while (true) {
+                System.out.print("请选择 Java 路径编号 (1-" + javaPaths.size() + "): ");
+                //int javaChoice = scanner.nextInt() - 1;
+                if (!scanner.hasNextInt()) {
+                    scanner.nextLine(); // 吃掉非法 token，否则死循环
+                    System.out.println("请输入数字。");
+                    continue;
+                }
+                int choice = scanner.nextInt();
+                scanner.nextLine(); // 吃掉换行
+                if (choice < 1 || choice > javaPaths.size()) {
+                    System.out.println("编号超出范围，请重新输入。");
+                    continue;
+                }
+                return Optional.of(javaPaths.get(choice - 1));
+                //return javaPaths.get(Math.max(0, Math.min(javaChoice, javaPaths.size() - 1)));
+            }
         }
     }
 

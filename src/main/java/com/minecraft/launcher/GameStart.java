@@ -3,16 +3,21 @@ package com.minecraft.launcher;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import com.minecraft.launcher.model.version.javaversion.JavaFander;
-import com.minecraft.launcher.model.version.arguments.commandBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.minecraft.launcher.model.version.javaversion.JavaFinder;
+import com.minecraft.launcher.model.version.arguments.CommandBuilder;
+
 public class GameStart {
 
+    private static final Logger logger = LoggerFactory.getLogger(GameStart.class.getName());
     public void gameStart(){
         try{
-            commandBuilder commandBuilder = new commandBuilder();
-            JavaFander javaFander = new JavaFander();
+            CommandBuilder commandBuilder = new CommandBuilder();
+            JavaFinder javaFinder = new JavaFinder();
             List<String> command = new ArrayList<>();
-            String javaPath = javaFander.JavaVersionSelector();
+            String javaPath = javaFinder.JavaVersionSelector().orElseThrow(() -> new RuntimeException("未选择 Java 路径"));
             command.add(javaPath);
             command.addAll(commandBuilder.Getcommand());
             command.add("@\"" + commandBuilder.getArgFile().getAbsolutePath() + "\"");
@@ -26,9 +31,11 @@ public class GameStart {
             Process process = processBuilder.start();
             int exitCode = process.waitFor();
             System.out.println("游戏已关闭，退出码: " + exitCode);
+        } catch (InterruptedException e) {
+            logger.error("进程被中断: {}", e.getMessage(), e);
+            Thread.currentThread().interrupt();
         }catch (Exception e) {
-            System.err.println("启动失败: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Failed to start the game.", e);
         }
     }
 

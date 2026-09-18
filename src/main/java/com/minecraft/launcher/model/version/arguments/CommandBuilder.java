@@ -8,14 +8,18 @@ import java.nio.file.Files;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import lombok.Getter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.minecraft.launcher.model.users.users;
+import com.minecraft.launcher.model.users.Users;
 import com.minecraft.launcher.model.version.arguments.game.GameVersionScanner;
 import com.minecraft.launcher.model.version.arguments.game.MinecraftFinder;
-import lombok.Getter;
 
-public class commandBuilder {
 
+public class CommandBuilder {
+
+    private static final Logger logger = LoggerFactory.getLogger(CommandBuilder.class);
     // ObjectMapper 线程安全，可以静态复用
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -172,22 +176,33 @@ public class commandBuilder {
 
     private final List<String> argFileLines = new ArrayList<String>();
 
-    MinecraftFinder minecraftFinder = new MinecraftFinder();
+    private final MinecraftFinder minecraftFinder ;
     @Getter
-    private final String gameDir = minecraftFinder.GamePathSelecter();
-    GameVersionScanner GameVersionScanner = new GameVersionScanner(gameDir);
+    private final String gameDir;
+    private final GameVersionScanner GameVersionScanner;
     @Getter
-    private final String version = GameVersionScanner.GameVersionGet();
-    private final String classPath = buildClasspath(gameDir, version);
-    private final String assetIndex = getAssetIndex(gameDir, version);
-    private final String nativesPath = gameDir + "/versions/" + version + "/" + version + "-natives";
+    private final String version;
+    private final String classPath;
+    private final String assetIndex;
+    private final String nativesPath;
     @Getter
-    private final File argFile = new File(gameDir, "command_args.txt");
+    private final File argFile;
+
+    public CommandBuilder() {
+        this.minecraftFinder = new MinecraftFinder();
+        this.gameDir = minecraftFinder.GamePathSelecter().orElseThrow(() -> new RuntimeException("未选择游戏路径"));
+        this.GameVersionScanner = new GameVersionScanner(gameDir);
+        this.version = GameVersionScanner.GameVersionGet().orElseThrow(() -> new RuntimeException("未选择游戏版本"));
+        this.classPath = buildClasspath(gameDir, version);
+        this.assetIndex = getAssetIndex(gameDir, version);
+        this.nativesPath = gameDir + "/versions/" + version + "/" + version + "-natives";
+        this.argFile = new File(gameDir, "command_args.txt");
+    }
 
     public void commandConnect() {
         try {
             System.out.println("\nCommand Connecting...");
-            users user = new users();
+            Users user = new Users();
             user.changeUsername();//要求修改用户名
 
             // 如果 natives 目录不存在，简单提示
@@ -221,7 +236,7 @@ public class commandBuilder {
 
         } catch (Exception e) {
             System.err.println("Connect false: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Connect failed: {}", e.getMessage(), e);
         }
     }
 
