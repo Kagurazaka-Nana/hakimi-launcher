@@ -67,6 +67,12 @@ tasks.test {
     finalizedBy(tasks.jacocoTestReport)
 }
 
+// 让 run / test 等 JavaExec 任务始终使用 JDK 25 toolchain，而不是 Gradle daemon 的 JVM，
+// 否则可能因 daemon 运行在较低版本 JVM 上而抛 UnsupportedClassVersionError。
+tasks.withType<JavaExec>().configureEach {
+    javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
+}
+
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
     reports {
