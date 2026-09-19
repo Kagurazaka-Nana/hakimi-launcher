@@ -6,7 +6,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") version "2.4.20"
     id("org.jetbrains.compose") version "1.12.0"
     jacoco
-    id("org.sonarqube") version "3.3"
+    id("org.sonarqube") version "7.5.0.8588"
 }
 
 group = "com.minecraft"
