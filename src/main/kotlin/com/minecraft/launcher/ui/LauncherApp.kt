@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,34 +15,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -63,9 +48,18 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.minecraft.launcher.backend.DownloadItem
+import com.minecraft.launcher.backend.DownloadTask
+import com.minecraft.launcher.backend.DownloadsSnapshot
 import com.minecraft.launcher.backend.HomeSnapshot
+import com.minecraft.launcher.backend.InstanceItem
 import com.minecraft.launcher.backend.LauncherBackend
-import com.minecraft.launcher.ui.theme.CardSoft
+import com.minecraft.launcher.backend.SettingsSnapshot
+import com.minecraft.launcher.ui.components.IconBadge
+import com.minecraft.launcher.ui.components.PageHeader
+import com.minecraft.launcher.ui.components.Pill
+import com.minecraft.launcher.ui.components.PlaceholderThumb
+import com.minecraft.launcher.ui.components.SoftCard
 import com.minecraft.launcher.ui.theme.CardWhite
 import com.minecraft.launcher.ui.theme.ChipBg
 import com.minecraft.launcher.ui.theme.ChipText
@@ -76,19 +70,25 @@ import com.minecraft.launcher.ui.theme.PrimaryIndigo
 import com.minecraft.launcher.ui.theme.SidebarActive
 import com.minecraft.launcher.ui.theme.SidebarDark
 import com.minecraft.launcher.ui.theme.SidebarTextMuted
-import com.minecraft.launcher.ui.theme.SuccessBg
-import com.minecraft.launcher.ui.theme.SuccessGreen
 import com.minecraft.launcher.ui.theme.TextDark
 import com.minecraft.launcher.ui.theme.TextMuted
 import kotlinx.coroutines.launch
 
 @Composable
 fun LauncherApp(backend: LauncherBackend) {
-    var snapshot by remember { mutableStateOf<HomeSnapshot?>(null) }
+    var home by remember { mutableStateOf<HomeSnapshot?>(null) }
+    var instances by remember { mutableStateOf<List<InstanceItem>>(emptyList()) }
+    var downloads by remember { mutableStateOf<DownloadsSnapshot?>(null) }
+    var settings by remember { mutableStateOf<SettingsSnapshot?>(null) }
     var selectedNav by remember { mutableStateOf("首页") }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) { snapshot = backend.loadHome() }
+    LaunchedEffect(Unit) {
+        home = backend.loadHome()
+        instances = backend.loadInstances()
+        downloads = backend.loadDownloads()
+        settings = backend.loadSettings()
+    }
 
     MaterialTheme(colorScheme = HakimiColorScheme) {
         Surface(modifier = Modifier.fillMaxSize(), color = ContentBackground) {
@@ -97,19 +97,17 @@ fun LauncherApp(backend: LauncherBackend) {
                 Row(modifier = Modifier.weight(1f)) {
                     Sidebar(selected = selectedNav, onSelect = { selectedNav = it })
                     Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .background(ContentBackground)
+                        modifier = Modifier.weight(1f).fillMaxHeight().background(ContentBackground)
                     ) {
-                        HomeScreen(
-                            data = snapshot,
-                            onLaunch = {
-                                scope.launch {
-                                    backend.launch(snapshot?.version ?: "latest")
-                                }
-                            }
-                        )
+                        when (selectedNav) {
+                            "首页" -> HomeScreen(
+                                data = home,
+                                onLaunch = { scope.launch { backend.launch(home?.version ?: "latest") } }
+                            )
+                            "实例" -> InstancesScreen(instances)
+                            "下载" -> DownloadsScreen(downloads)
+                            "设置" -> SettingsScreen(settings)
+                        }
                     }
                 }
             }
@@ -120,11 +118,7 @@ fun LauncherApp(backend: LauncherBackend) {
 @Composable
 private fun TopBar() {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(46.dp)
-            .background(SidebarDark)
-            .padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth().height(46.dp).background(SidebarDark).padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -144,11 +138,7 @@ private fun TopBar() {
 private fun Sidebar(selected: String, onSelect: (String) -> Unit) {
     val items = listOf("首页" to Icons.Filled.Home, "实例" to Icons.Filled.Layers, "下载" to Icons.Filled.Download, "设置" to Icons.Filled.Settings)
     Column(
-        modifier = Modifier
-            .width(190.dp)
-            .fillMaxHeight()
-            .background(SidebarDark)
-            .padding(horizontal = 14.dp, vertical = 18.dp)
+        modifier = Modifier.width(190.dp).fillMaxHeight().background(SidebarDark).padding(horizontal = 14.dp, vertical = 18.dp)
     ) {
         items.forEach { (label, icon) ->
             val active = label == selected
@@ -175,7 +165,12 @@ private fun Sidebar(selected: String, onSelect: (String) -> Unit) {
 @Composable
 private fun HomeScreen(data: HomeSnapshot?, onLaunch: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        WelcomeHeader(data)
+        PageHeader(
+            icon = Icons.Filled.Pets,
+            title = data?.welcomeTitle ?: "欢迎回来！",
+            subtitle = data?.welcomeSubtitle ?: "",
+            right = { PlaceholderThumb(Icons.Filled.Pets, modifier = Modifier.size(96.dp)) }
+        )
         Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
             Column(modifier = Modifier.weight(1.7f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 HeroCard(data, onLaunch)
@@ -184,26 +179,8 @@ private fun HomeScreen(data: HomeSnapshot?, onLaunch: () -> Unit) {
                     LoadingCard(data, modifier = Modifier.weight(1f))
                 }
             }
-            RightPanel(data, modifier = Modifier.width(300.dp))
+            HomeRightPanel(data, modifier = Modifier.width(300.dp))
         }
-    }
-}
-
-@Composable
-private fun WelcomeHeader(data: HomeSnapshot?) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Filled.Pets, contentDescription = null, tint = PrimaryIndigo, modifier = Modifier.size(34.dp))
-        Spacer(modifier = Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(data?.welcomeTitle ?: "欢迎回来！", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextDark)
-            Text(data?.welcomeSubtitle ?: "", color = TextMuted, fontSize = 13.sp)
-        }
-        Box(
-            modifier = Modifier.size(96.dp).clip(RoundedCornerShape(20.dp)).background(
-                Brush.linearGradient(listOf(ChipBg, CardWhite))
-            ),
-            contentAlignment = Alignment.Center
-        ) { Icon(Icons.Filled.Pets, contentDescription = null, tint = PrimaryIndigo, modifier = Modifier.size(44.dp)) }
     }
 }
 
@@ -211,18 +188,9 @@ private fun WelcomeHeader(data: HomeSnapshot?) {
 private fun ColumnScope.HeroCard(data: HomeSnapshot?, onLaunch: () -> Unit) {
     SoftCard(modifier = Modifier.fillMaxWidth().weight(1f)) {
         Row(modifier = Modifier.fillMaxSize().padding(20.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            // 世界缩略图占位（无贴图，用色块+图标）
-            Box(
-                modifier = Modifier
-                    .width(220.dp)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Brush.verticalGradient(listOf(PrimaryIndigo.copy(alpha = 0.25f), ChipBg))),
-                contentAlignment = Alignment.Center
-            ) { Icon(Icons.Filled.Home, contentDescription = null, tint = PrimaryIndigo, modifier = Modifier.size(56.dp)) }
-
+            PlaceholderThumb(Icons.Filled.Home, modifier = Modifier.width(220.dp).fillMaxHeight())
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Pill("当前实例", bg = ChipBg, fg = ChipText)
+                Pill("当前实例")
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(data?.instanceName ?: "…", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = TextDark)
                     Spacer(modifier = Modifier.width(6.dp))
@@ -256,12 +224,15 @@ private fun QuickActionsCard(data: HomeSnapshot?, modifier: Modifier = Modifier)
     SoftCard(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Filled.Bolt, contentDescription = null, tint = PrimaryIndigo)
+                Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = PrimaryIndigo)
                 Text("快速操作", fontWeight = FontWeight.Bold, color = TextDark)
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 data?.quickActions?.forEach { action ->
-                    QuickActionTile(icon = iconFor(action.icon), label = action.label, color = Color(action.colorHex))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconBadge(icon = iconFor(action.icon), color = Color(action.colorHex), size = 52.dp)
+                        Text(action.label, color = TextDark, fontSize = 12.sp)
+                    }
                 }
             }
         }
@@ -273,12 +244,12 @@ private fun LoadingCard(data: HomeSnapshot?, modifier: Modifier = Modifier) {
     SoftCard(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Filled.CloudDownload, contentDescription = null, tint = PrimaryIndigo)
+                Icon(Icons.Filled.Download, contentDescription = null, tint = PrimaryIndigo)
                 Text(data?.loadingText ?: "加载中…", fontWeight = FontWeight.Bold, color = TextDark)
             }
             Text(data?.loadingHint ?: "", color = TextMuted, fontSize = 13.sp)
             Spacer(modifier = Modifier.weight(1f))
-            LinearProgressIndicator(
+            androidx.compose.material3.LinearProgressIndicator(
                 progress = { (data?.loadingPercent ?: 0) / 100f },
                 modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
                 color = PrimaryIndigo,
@@ -290,7 +261,7 @@ private fun LoadingCard(data: HomeSnapshot?, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun RightPanel(data: HomeSnapshot?, modifier: Modifier = Modifier) {
+private fun HomeRightPanel(data: HomeSnapshot?, modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         ProfileCard(data)
         RecentCard(data)
@@ -303,17 +274,11 @@ private fun ProfileCard(data: HomeSnapshot?) {
     SoftCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(PrimaryIndigo.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Person, contentDescription = null, tint = PrimaryIndigo)
-                }
+                com.minecraft.launcher.ui.components.AvatarCircle(Icons.Filled.Home, PrimaryIndigo)
                 Column {
+                    Text(data?.profileName ?: "…", fontWeight = FontWeight.Bold, color = TextDark)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(data?.profileName ?: "…", fontWeight = FontWeight.Bold, color = TextDark)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(Icons.Filled.Star, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFFF5A623), modifier = Modifier.size(16.dp))
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(SuccessGreen))
+                        Box(modifier = Modifier.size(8.dp).clip(RoundedCornerShape(50)).background(com.minecraft.launcher.ui.theme.SuccessGreen))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(if (data?.profileOnline == true) "在线" else "离线", color = TextMuted, fontSize = 12.sp)
                     }
@@ -329,15 +294,13 @@ private fun RecentCard(data: HomeSnapshot?) {
     SoftCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Filled.History, contentDescription = null, tint = PrimaryIndigo)
+                Icon(Icons.Filled.Home, contentDescription = null, tint = PrimaryIndigo)
                 Text("最近游玩", fontWeight = FontWeight.Bold, color = TextDark, modifier = Modifier.weight(1f))
                 Text("查看更多 >", color = TextMuted, fontSize = 12.sp)
             }
             data?.recentPlay?.let { rp ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)).background(ChipBg), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.Home, contentDescription = null, tint = PrimaryIndigo, modifier = Modifier.size(22.dp))
-                    }
+                    PlaceholderThumb(Icons.Filled.Home, modifier = Modifier.size(48.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(rp.name, fontWeight = FontWeight.SemiBold, color = TextDark, fontSize = 13.sp)
                         Text(rp.detail, color = TextMuted, fontSize = 12.sp)
@@ -356,22 +319,13 @@ private fun ResourceStatusCard(data: HomeSnapshot?, modifier: Modifier = Modifie
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Filled.Layers, contentDescription = null, tint = PrimaryIndigo)
                 Text("资源状态", fontWeight = FontWeight.Bold, color = TextDark, modifier = Modifier.weight(1f))
-                Text("全部正常 >", color = SuccessGreen, fontSize = 12.sp)
+                Text("全部正常 >", color = com.minecraft.launcher.ui.theme.SuccessGreen, fontSize = 12.sp)
             }
             data?.resourceStatus?.forEach { row ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Box(modifier = Modifier.size(32.dp).clip(RoundedCornerShape(9.dp)).background(Color(row.colorHex).copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-                        Icon(iconFor(row.icon), contentDescription = null, tint = Color(row.colorHex), modifier = Modifier.size(18.dp))
-                    }
+                    IconBadge(icon = iconFor(row.icon), color = Color(row.colorHex), size = 32.dp, iconSize = 18.dp)
                     Text(row.label, color = TextDark, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                    Row(
-                        modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(SuccessBg).padding(horizontal = 8.dp, vertical = 3.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        Icon(Icons.Filled.Check, contentDescription = null, tint = SuccessGreen, modifier = Modifier.size(12.dp))
-                        Text("已就绪", color = SuccessGreen, fontSize = 11.sp)
-                    }
+                    Pill("已就绪", bg = com.minecraft.launcher.ui.theme.SuccessBg, fg = com.minecraft.launcher.ui.theme.SuccessGreen)
                 }
             }
         }
@@ -391,50 +345,19 @@ private fun MetaCell(icon: ImageVector, label: String, value: String) {
 
 @Composable
 private fun MetaChip(text: String) {
-    Box(modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(ChipBg).padding(horizontal = 12.dp, vertical = 6.dp)) {
-        Text(text, color = ChipText, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-    }
+    Pill(text)
 }
 
-@Composable
-private fun QuickActionTile(icon: ImageVector, label: String, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box(modifier = Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(color.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
-        }
-        Text(label, color = TextDark, fontSize = 12.sp)
-    }
-}
-
-@Composable
-private fun Pill(text: String, bg: Color, fg: Color) {
-    Box(modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(bg).padding(horizontal = 12.dp, vertical = 5.dp)) {
-        Text(text, color = fg, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-    }
-}
-
-@Composable
-private fun SoftCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = CardWhite),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Column(modifier = Modifier.fillMaxSize(), content = content)
-    }
-}
-
-private fun iconFor(key: String): ImageVector = when (key) {
+internal fun iconFor(key: String): ImageVector = when (key) {
     "cat" -> Icons.Filled.Pets
-    "folder" -> Icons.Filled.Folder
+    "folder" -> Icons.Filled.Home
     "puzzle" -> Icons.Filled.Extension
     "download" -> Icons.Filled.Download
     "cube" -> Icons.Filled.DataObject
-    "image" -> Icons.Filled.Image
-    "add" -> Icons.Filled.Add
+    "image" -> Icons.Filled.Layers
+    "add" -> Icons.Filled.PlayArrow
     "home" -> Icons.Filled.Home
-    "coffee" -> Icons.Filled.Coffee
-    "person" -> Icons.Filled.Person
+    "coffee" -> Icons.Filled.PlayArrow
+    "person" -> Icons.Filled.Home
     else -> Icons.Filled.Settings
 }

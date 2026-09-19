@@ -15,6 +15,15 @@ interface LauncherBackend {
     /** 首页快照：账号、当前实例、模组、系统状态、最近活动等展示数据 */
     suspend fun loadHome(): HomeSnapshot
 
+    /** 实例列表快照 */
+    suspend fun loadInstances(): List<InstanceItem>
+
+    /** 下载页快照：分类、资源、队列 */
+    suspend fun loadDownloads(): DownloadsSnapshot
+
+    /** 设置页快照 */
+    suspend fun loadSettings(): SettingsSnapshot
+
     /** 刷新 Mojang version manifest */
     suspend fun refreshManifest()
 
