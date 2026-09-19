@@ -25,9 +25,13 @@
 *.iws
 *.ipr
 out/
+.jitpack
 target/
+
+# Gradle
 .gradle/
 build/
+.kotlin/
 
 # OS generated files
 .DS_Store
@@ -35,6 +39,9 @@ Thumbs.db
 
 # Project Specific Ignores
 temp/
-docs/
 launcherTest/
 .m2/
+
+# Local tooling / session dirs
+.zcode/
+.mimosa/
