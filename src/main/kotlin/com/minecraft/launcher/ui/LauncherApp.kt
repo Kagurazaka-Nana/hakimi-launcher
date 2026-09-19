@@ -18,10 +18,31 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Coffee
+import androidx.compose.material.icons.filled.DataObject
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -36,59 +57,59 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.minecraft.launcher.backend.HomeSnapshot
 import com.minecraft.launcher.backend.LauncherBackend
-import com.minecraft.launcher.ui.components.WorldHeroCanvas
-import com.minecraft.launcher.ui.theme.AccentPurple
-import com.minecraft.launcher.ui.theme.AccentYellow
+import com.minecraft.launcher.ui.theme.CardSoft
 import com.minecraft.launcher.ui.theme.CardWhite
+import com.minecraft.launcher.ui.theme.ChipBg
+import com.minecraft.launcher.ui.theme.ChipText
+import com.minecraft.launcher.ui.theme.ContentBackground
 import com.minecraft.launcher.ui.theme.HakimiColorScheme
-import com.minecraft.launcher.ui.theme.InfoBlue
 import com.minecraft.launcher.ui.theme.OnPrimary
-import com.minecraft.launcher.ui.theme.PeachSurface
-import com.minecraft.launcher.ui.theme.PrimaryOrange
-import com.minecraft.launcher.ui.theme.ReadyGreen
-import com.minecraft.launcher.ui.theme.TextBrown
+import com.minecraft.launcher.ui.theme.PrimaryIndigo
+import com.minecraft.launcher.ui.theme.SidebarActive
+import com.minecraft.launcher.ui.theme.SidebarDark
+import com.minecraft.launcher.ui.theme.SidebarTextMuted
+import com.minecraft.launcher.ui.theme.SuccessBg
+import com.minecraft.launcher.ui.theme.SuccessGreen
+import com.minecraft.launcher.ui.theme.TextDark
 import com.minecraft.launcher.ui.theme.TextMuted
 import kotlinx.coroutines.launch
 
 @Composable
 fun LauncherApp(backend: LauncherBackend) {
     var snapshot by remember { mutableStateOf<HomeSnapshot?>(null) }
-    var status by remember { mutableStateOf("准备就绪") }
+    var selectedNav by remember { mutableStateOf("首页") }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
-        snapshot = backend.loadHome()
-    }
+    LaunchedEffect(Unit) { snapshot = backend.loadHome() }
 
     MaterialTheme(colorScheme = HakimiColorScheme) {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            val data = snapshot
-            Row(modifier = Modifier.fillMaxSize()) {
-                Sidebar()
-                Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                    TopBar(data)
-                    Row(
-                        modifier = Modifier.fillMaxWidth().weight(1f).padding(20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(18.dp)
+        Surface(modifier = Modifier.fillMaxSize(), color = ContentBackground) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                TopBar()
+                Row(modifier = Modifier.weight(1f)) {
+                    Sidebar(selected = selectedNav, onSelect = { selectedNav = it })
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(ContentBackground)
                     ) {
-                        CenterColumn(
-                            data = data,
-                            status = status,
+                        HomeScreen(
+                            data = snapshot,
                             onLaunch = {
                                 scope.launch {
-                                    val v = data?.launchVersion ?: "latest"
-                                    backend.launch(v)
-                                    status = "启动 $v（后端待接入）"
+                                    backend.launch(snapshot?.version ?: "latest")
                                 }
                             }
                         )
-                        RightPanel(data)
                     }
                 }
             }
@@ -97,219 +118,230 @@ fun LauncherApp(backend: LauncherBackend) {
 }
 
 @Composable
-private fun Sidebar() {
-    val items = listOf("首页" to "🏠", "实例" to "📦", "模组" to "🧩", "世界" to "⛰️", "下载" to "⬇️", "设置" to "⚙️")
-    var selected by remember { mutableStateOf("首页") }
-
-    Column(
+private fun TopBar() {
+    Row(
         modifier = Modifier
-            .width(180.dp)
-            .fillMaxHeight()
-            .background(PeachSurface)
-            .padding(vertical = 20.dp, horizontal = 14.dp)
+            .fillMaxWidth()
+            .height(46.dp)
+            .background(SidebarDark)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(CardWhite),
+            modifier = Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).background(CardWhite),
             contentAlignment = Alignment.Center
-        ) {
-            Text("🐱", fontSize = 30.sp)
-        }
-        Spacer(modifier = Modifier.height(28.dp))
+        ) { Icon(Icons.Filled.Pets, contentDescription = null, tint = PrimaryIndigo, modifier = Modifier.size(18.dp)) }
+        Spacer(modifier = Modifier.width(10.dp))
+        Text("hakimi-launcher", color = CardWhite, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        Spacer(modifier = Modifier.weight(1f))
+        Text("—", color = SidebarTextMuted, fontSize = 16.sp, modifier = Modifier.padding(horizontal = 10.dp))
+        Text("▢", color = SidebarTextMuted, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 10.dp))
+        Text("✕", color = SidebarTextMuted, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 10.dp))
+    }
+}
+
+@Composable
+private fun Sidebar(selected: String, onSelect: (String) -> Unit) {
+    val items = listOf("首页" to Icons.Filled.Home, "实例" to Icons.Filled.Layers, "下载" to Icons.Filled.Download, "设置" to Icons.Filled.Settings)
+    Column(
+        modifier = Modifier
+            .width(190.dp)
+            .fillMaxHeight()
+            .background(SidebarDark)
+            .padding(horizontal = 14.dp, vertical = 18.dp)
+    ) {
         items.forEach { (label, icon) ->
             val active = label == selected
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 5.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(if (active) PrimaryOrange else Color.Transparent)
-                    .clickable { selected = label }
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(icon, fontSize = 18.sp)
-                    Text(
-                        text = label,
-                        color = if (active) OnPrimary else TextBrown,
-                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
-                        fontSize = 15.sp
-                    )
-                }
-            }
-        }
-        Spacer(modifier = Modifier.weight(1f))
-        Text("🐱", fontSize = 40.sp, modifier = Modifier.padding(start = 6.dp))
-        Text("✨ ⭐ ✨", fontSize = 12.sp, color = TextMuted)
-    }
-}
-
-@Composable
-private fun TopBar(data: HomeSnapshot?) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text("hakimi 启动器", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = TextBrown)
-        Text(" 🐾", fontSize = 22.sp)
-        Spacer(modifier = Modifier.weight(1f))
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(AccentPurple),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("🙂", fontSize = 20.sp)
-        }
-        Spacer(modifier = Modifier.width(10.dp))
-        Column {
-            Text(data?.username ?: "…", fontWeight = FontWeight.SemiBold, color = TextBrown)
-            Text(data?.profileType ?: "本地档案", fontSize = 12.sp, color = TextMuted)
-        }
-        Text("  ⌄", color = TextMuted)
-    }
-}
-
-@Composable
-private fun RowScope.CenterColumn(
-    data: HomeSnapshot?,
-    status: String,
-    onLaunch: () -> Unit
-) {
-    Column(
-        modifier = Modifier.weight(2.4f).fillMaxHeight(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        WorldHeroCard(data)
-        InstanceChipsRow(data)
-        LaunchButton(version = data?.launchVersion ?: "", onClick = onLaunch)
-    }
-}
-
-@Composable
-private fun ColumnScope.WorldHeroCard(data: HomeSnapshot?) {
-    SoftCard(modifier = Modifier.fillMaxWidth().weight(1f)) {
-        Box(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp))) {
-            WorldHeroCanvas(modifier = Modifier.fillMaxSize())
-            // 顶部信息遮罩
-            Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
-                Row(verticalAlignment = Alignment.Top) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(data?.worldName ?: "加载中…", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = TextBrown)
-                            Text(" ⭐", fontSize = 20.sp)
-                        }
-                        Text(
-                            data?.worldDescription ?: "",
-                            color = TextBrown,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Pill(text = if (data?.ready == true) "● 准备就绪" else "○ 未就绪", bg = ReadyGreen.copy(alpha = 0.18f), fg = ReadyGreen)
-                    }
-                    Pill(text = "⛰ ${data?.worldMode ?: "生存"}", bg = Color(0x33FFFFFF), fg = TextBrown)
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                Text("🧭", fontSize = 26.sp, modifier = Modifier.align(Alignment.End))
-            }
-        }
-    }
-}
-
-@Composable
-private fun InstanceChipsRow(data: HomeSnapshot?) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        SoftCard {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text("🟩")
-                Text(data?.instanceLabel ?: "…", fontWeight = FontWeight.SemiBold, color = TextBrown)
-                Text("⌄", color = TextMuted)
-            }
-        }
-        data?.modTags?.forEach { tag ->
-            Chip(text = tag)
-        }
-        SoftCard {
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                    .background(if (active) SidebarActive else Color.Transparent)
+                    .clickable { onSelect(label) }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("🧩 ${data?.modCount ?: 0} 个模组", color = TextMuted, fontSize = 13.sp)
-                Text("🗄 ${data?.instanceSize ?: ""}", color = TextMuted, fontSize = 13.sp)
+                Icon(icon, contentDescription = null, tint = if (active) OnPrimary else SidebarTextMuted)
+                Text(label, color = if (active) OnPrimary else SidebarTextMuted, fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal)
             }
+        }
+        Spacer(modifier = Modifier.weight(1f))
+        Icon(Icons.Filled.Pets, contentDescription = null, tint = SidebarTextMuted.copy(alpha = 0.5f), modifier = Modifier.size(40.dp))
+    }
+}
+
+@Composable
+private fun HomeScreen(data: HomeSnapshot?, onLaunch: () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        WelcomeHeader(data)
+        Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            Column(modifier = Modifier.weight(1.7f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                HeroCard(data, onLaunch)
+                Row(modifier = Modifier.height(180.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                    QuickActionsCard(data, modifier = Modifier.weight(1f))
+                    LoadingCard(data, modifier = Modifier.weight(1f))
+                }
+            }
+            RightPanel(data, modifier = Modifier.width(300.dp))
         }
     }
 }
 
 @Composable
-private fun LaunchButton(version: String, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        shape = RoundedCornerShape(28.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange, contentColor = OnPrimary),
-        modifier = Modifier.fillMaxWidth().height(64.dp)
-    ) {
-        Text("▶", fontSize = 18.sp)
-        Spacer(modifier = Modifier.width(10.dp))
-        Text("启动 $version", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+private fun WelcomeHeader(data: HomeSnapshot?) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Filled.Pets, contentDescription = null, tint = PrimaryIndigo, modifier = Modifier.size(34.dp))
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(data?.welcomeTitle ?: "欢迎回来！", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextDark)
+            Text(data?.welcomeSubtitle ?: "", color = TextMuted, fontSize = 13.sp)
+        }
+        Box(
+            modifier = Modifier.size(96.dp).clip(RoundedCornerShape(20.dp)).background(
+                Brush.linearGradient(listOf(ChipBg, CardWhite))
+            ),
+            contentAlignment = Alignment.Center
+        ) { Icon(Icons.Filled.Pets, contentDescription = null, tint = PrimaryIndigo, modifier = Modifier.size(44.dp)) }
     }
 }
 
 @Composable
-private fun RightPanel(data: HomeSnapshot?) {
-    Column(
-        modifier = Modifier.width(300.dp).fillMaxHeight(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text("系统状态 🐾", fontWeight = FontWeight.Bold, color = TextBrown, fontSize = 16.sp)
-        SoftCard {
-            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                if (data != null) {
-                    StatRow("🖥", "内存", "%.1f / %.0f GB".format(data.memoryUsedGb, data.memoryTotalGb),
-                        "%.0f%%".format(data.memoryUsedGb / data.memoryTotalGb * 100),
-                        (data.memoryUsedGb / data.memoryTotalGb).toFloat(), InfoBlue)
-                    StatRow("☕", "Java", data.javaVersion, if (data.javaOk) "OK" else "异常",
-                        if (data.javaOk) 1f else 0.3f, ReadyGreen)
-                    StatRow("📦", data.loaderName, data.loaderVersion, if (data.loaderCompatible) "兼容" else "不兼容",
-                        if (data.loaderCompatible) 1f else 0.3f, AccentYellow)
+private fun ColumnScope.HeroCard(data: HomeSnapshot?, onLaunch: () -> Unit) {
+    SoftCard(modifier = Modifier.fillMaxWidth().weight(1f)) {
+        Row(modifier = Modifier.fillMaxSize().padding(20.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+            // 世界缩略图占位（无贴图，用色块+图标）
+            Box(
+                modifier = Modifier
+                    .width(220.dp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Brush.verticalGradient(listOf(PrimaryIndigo.copy(alpha = 0.25f), ChipBg))),
+                contentAlignment = Alignment.Center
+            ) { Icon(Icons.Filled.Home, contentDescription = null, tint = PrimaryIndigo, modifier = Modifier.size(56.dp)) }
+
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Pill("当前实例", bg = ChipBg, fg = ChipText)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(data?.instanceName ?: "…", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = TextDark)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(Icons.Filled.Edit, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+                    MetaCell(Icons.Filled.DataObject, "版本", data?.version ?: "")
+                    MetaCell(Icons.Filled.Extension, "加载器", data?.loader ?: "")
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    data?.modeTags?.forEach { tag -> MetaChip(tag) }
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                Button(
+                    onClick = onLaunch,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryIndigo, contentColor = OnPrimary),
+                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                ) {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("启动游戏", fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
-        Text("最近活动 🐾", fontWeight = FontWeight.Bold, color = TextBrown, fontSize = 16.sp)
-        SoftCard(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                data?.recentActivities?.forEach { act ->
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(Color(act.colorHex))
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(CircleShape)
-                                .background(Color(act.colorHex).copy(alpha = 0.16f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(activityGlyph(act.icon), fontSize = 16.sp)
-                        }
-                        Text(act.text, modifier = Modifier.weight(1f), color = TextBrown, fontSize = 13.sp)
-                        Text(act.time, color = TextMuted, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun QuickActionsCard(data: HomeSnapshot?, modifier: Modifier = Modifier) {
+    SoftCard(modifier = modifier) {
+        Column(modifier = Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Filled.Bolt, contentDescription = null, tint = PrimaryIndigo)
+                Text("快速操作", fontWeight = FontWeight.Bold, color = TextDark)
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                data?.quickActions?.forEach { action ->
+                    QuickActionTile(icon = iconFor(action.icon), label = action.label, color = Color(action.colorHex))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingCard(data: HomeSnapshot?, modifier: Modifier = Modifier) {
+    SoftCard(modifier = modifier) {
+        Column(modifier = Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Filled.CloudDownload, contentDescription = null, tint = PrimaryIndigo)
+                Text(data?.loadingText ?: "加载中…", fontWeight = FontWeight.Bold, color = TextDark)
+            }
+            Text(data?.loadingHint ?: "", color = TextMuted, fontSize = 13.sp)
+            Spacer(modifier = Modifier.weight(1f))
+            LinearProgressIndicator(
+                progress = { (data?.loadingPercent ?: 0) / 100f },
+                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                color = PrimaryIndigo,
+                trackColor = ChipBg,
+            )
+            Text("加载游戏文件中… ${data?.loadingPercent ?: 0}%", color = TextMuted, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun RightPanel(data: HomeSnapshot?, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        ProfileCard(data)
+        RecentCard(data)
+        ResourceStatusCard(data, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun ProfileCard(data: HomeSnapshot?) {
+    SoftCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(PrimaryIndigo.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Person, contentDescription = null, tint = PrimaryIndigo)
+                }
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(data?.profileName ?: "…", fontWeight = FontWeight.Bold, color = TextDark)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(Icons.Filled.Star, contentDescription = null, tint = androidx.compose.ui.graphics.Color(0xFFF5A623), modifier = Modifier.size(16.dp))
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(SuccessGreen))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(if (data?.profileOnline == true) "在线" else "离线", color = TextMuted, fontSize = 12.sp)
+                    }
+                }
+            }
+            Text(data?.profileTagline ?: "", color = TextMuted, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun RecentCard(data: HomeSnapshot?) {
+    SoftCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Filled.History, contentDescription = null, tint = PrimaryIndigo)
+                Text("最近游玩", fontWeight = FontWeight.Bold, color = TextDark, modifier = Modifier.weight(1f))
+                Text("查看更多 >", color = TextMuted, fontSize = 12.sp)
+            }
+            data?.recentPlay?.let { rp ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)).background(ChipBg), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.Home, contentDescription = null, tint = PrimaryIndigo, modifier = Modifier.size(22.dp))
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(rp.name, fontWeight = FontWeight.SemiBold, color = TextDark, fontSize = 13.sp)
+                        Text(rp.detail, color = TextMuted, fontSize = 12.sp)
+                        Text(rp.time, color = TextMuted, fontSize = 11.sp)
                     }
                 }
             }
@@ -318,74 +350,91 @@ private fun RightPanel(data: HomeSnapshot?) {
 }
 
 @Composable
-private fun StatRow(icon: String, label: String, value: String, badge: String, progress: Float, color: Color) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(color.copy(alpha = 0.16f)),
-                contentAlignment = Alignment.Center
-            ) { Text(icon, fontSize = 18.sp) }
-            Spacer(modifier = Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(label, fontWeight = FontWeight.SemiBold, color = TextBrown, fontSize = 14.sp)
-                Text(value, color = TextMuted, fontSize = 12.sp)
+private fun ResourceStatusCard(data: HomeSnapshot?, modifier: Modifier = Modifier) {
+    SoftCard(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Filled.Layers, contentDescription = null, tint = PrimaryIndigo)
+                Text("资源状态", fontWeight = FontWeight.Bold, color = TextDark, modifier = Modifier.weight(1f))
+                Text("全部正常 >", color = SuccessGreen, fontSize = 12.sp)
             }
-            Text(badge, color = color, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+            data?.resourceStatus?.forEach { row ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(modifier = Modifier.size(32.dp).clip(RoundedCornerShape(9.dp)).background(Color(row.colorHex).copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
+                        Icon(iconFor(row.icon), contentDescription = null, tint = Color(row.colorHex), modifier = Modifier.size(18.dp))
+                    }
+                    Text(row.label, color = TextDark, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                    Row(
+                        modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(SuccessBg).padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Icon(Icons.Filled.Check, contentDescription = null, tint = SuccessGreen, modifier = Modifier.size(12.dp))
+                        Text("已就绪", color = SuccessGreen, fontSize = 11.sp)
+                    }
+                }
+            }
         }
-        LinearProgressIndicator(
-            progress = { progress.coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-            color = color,
-            trackColor = color.copy(alpha = 0.15f),
-        )
     }
 }
 
 @Composable
-private fun Chip(text: String) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(CardWhite)
-            .padding(horizontal = 14.dp, vertical = 10.dp)
-    ) {
-        Text("◆ $text", color = TextBrown, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+private fun MetaCell(icon: ImageVector, label: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Icon(icon, contentDescription = null, tint = TextMuted, modifier = Modifier.size(20.dp))
+        Column {
+            Text(label, color = TextMuted, fontSize = 12.sp)
+            Text(value, color = TextDark, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        }
+    }
+}
+
+@Composable
+private fun MetaChip(text: String) {
+    Box(modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(ChipBg).padding(horizontal = 12.dp, vertical = 6.dp)) {
+        Text(text, color = ChipText, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+private fun QuickActionTile(icon: ImageVector, label: String, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(modifier = Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(color.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
+        }
+        Text(label, color = TextDark, fontSize = 12.sp)
     }
 }
 
 @Composable
 private fun Pill(text: String, bg: Color, fg: Color) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(bg)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    ) {
-        Text(text, color = fg, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+    Box(modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(bg).padding(horizontal = 12.dp, vertical = 5.dp)) {
+        Text(text, color = fg, fontSize = 12.sp, fontWeight = FontWeight.Medium)
     }
 }
 
 @Composable
-private fun SoftCard(
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit
-) {
+private fun SoftCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = CardWhite),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = null,
     ) {
-        Column(modifier = Modifier.fillMaxWidth(), content = content)
+        Column(modifier = Modifier.fillMaxSize(), content = content)
     }
 }
 
-private fun activityGlyph(icon: String): String = when (icon) {
-    "puzzle" -> "🧩"
-    "download" -> "⬇️"
-    "cube" -> "📦"
-    "mountain" -> "⛰️"
-    "folder" -> "📁"
-    else -> "•"
+private fun iconFor(key: String): ImageVector = when (key) {
+    "cat" -> Icons.Filled.Pets
+    "folder" -> Icons.Filled.Folder
+    "puzzle" -> Icons.Filled.Extension
+    "download" -> Icons.Filled.Download
+    "cube" -> Icons.Filled.DataObject
+    "image" -> Icons.Filled.Image
+    "add" -> Icons.Filled.Add
+    "home" -> Icons.Filled.Home
+    "coffee" -> Icons.Filled.Coffee
+    "person" -> Icons.Filled.Person
+    else -> Icons.Filled.Settings
 }

@@ -2,39 +2,41 @@ package com.minecraft.launcher.backend
 
 /**
  * 前端框架阶段的占位实现：不访问网络、不触碰文件系统，
- * 仅向 UI 提供稳定的演示数据。
+ * 仅向 UI 提供稳定的演示数据（对应 docs/export 首页视觉稿）。
  */
 class StubLauncherBackend : LauncherBackend {
 
-    override suspend fun getCurrentUsername(): String = "Steve"
+    override suspend fun getCurrentUsername(): String = "HakimiCat"
 
-    override suspend fun loadVersions(): List<String> = listOf("latest-release")
+    override suspend fun loadVersions(): List<String> = listOf("1.21.1", "1.20.1", "1.19.4")
 
     override suspend fun loadHome(): HomeSnapshot = HomeSnapshot(
-        username = "Alex xx",
-        profileType = "本地档案",
-        worldName = "杉木谷",
-        worldDescription = "一个有山、有河，还有无限可能的宁静世界。",
-        worldMode = "生存",
-        ready = true,
-        instanceLabel = "杉木谷 · Fabric 1.21.1",
-        launchVersion = "1.21.1",
-        modTags = listOf("钠", "光影", "机械动力"),
-        modCount = 48,
-        instanceSize = "2.8 GB",
-        memoryUsedGb = 5.2,
-        memoryTotalGb = 16.0,
-        javaVersion = "17.0.10",
-        javaOk = true,
-        loaderName = "Fabric",
-        loaderVersion = "1.21.1",
-        loaderCompatible = true,
-        recentActivities = listOf(
-            ActivityItem("puzzle", "已加载 48 个模组", "10:42", 0xFF4CAF7D),
-            ActivityItem("download", "已下载 3 个文件", "10:37", 0xFF6FA8DC),
-            ActivityItem("cube", "已更新实例", "10:21", 0xFFB39DDB),
-            ActivityItem("mountain", "已创建世界", "09:58", 0xFFF6C453),
-            ActivityItem("folder", "已导入资源包", "09:44", 0xFFF4795B),
+        welcomeTitle = "欢迎回来，旅行者！",
+        welcomeSubtitle = "在方块的世界里，和猫咪一起开启新的冒险吧！",
+        profileName = "HakimiCat",
+        profileBadge = "👑",
+        profileOnline = true,
+        profileTagline = "用代码搭建属于自己的世界 —— hakimi",
+        instanceName = "生存世界",
+        instanceDescription = "和猫咪一起在方块世界中生存、建造、探索！",
+        version = "1.21.1",
+        loader = "Fabric",
+        modeTags = listOf("生存模式", "单人", "Java 21"),
+        quickActions = listOf(
+            QuickAction("cat", "创建实例", 0xFF9B6FE0),
+            QuickAction("folder", "导入实例", 0xFF5B8DEF),
+            QuickAction("puzzle", "管理模组", 0xFF3FA34D),
+            QuickAction("download", "前往下载", 0xFFF5A623),
+        ),
+        loadingPercent = 68,
+        loadingText = "加载中…",
+        loadingHint = "正在准备资源…请稍候~",
+        recentPlay = RecentPlay("生存世界", "1.21.1 · Fabric", "3 小时前"),
+        resourceStatus = listOf(
+            ResourceRow("cube", "游戏文件", true, 0xFF6C5CE7),
+            ResourceRow("puzzle", "加载器", true, 0xFF9B6FE0),
+            ResourceRow("folder", "模组", true, 0xFFF5A623),
+            ResourceRow("image", "资源包", true, 0xFFE86AA6),
         ),
     )
 

@@ -2,31 +2,43 @@ package com.minecraft.launcher.backend
 
 /** 首页快照：UI 只消费这个数据结构，真实来源后续由后端填充。 */
 data class HomeSnapshot(
-    val username: String,
-    val profileType: String,
-    val worldName: String,
-    val worldDescription: String,
-    val worldMode: String,
-    val ready: Boolean,
-    val instanceLabel: String,
-    val launchVersion: String,
-    val modTags: List<String>,
-    val modCount: Int,
-    val instanceSize: String,
-    val memoryUsedGb: Double,
-    val memoryTotalGb: Double,
-    val javaVersion: String,
-    val javaOk: Boolean,
-    val loaderName: String,
-    val loaderVersion: String,
-    val loaderCompatible: Boolean,
-    val recentActivities: List<ActivityItem>,
+    val welcomeTitle: String,
+    val welcomeSubtitle: String,
+    val profileName: String,
+    val profileBadge: String,
+    val profileOnline: Boolean,
+    val profileTagline: String,
+    val instanceName: String,
+    val instanceDescription: String,
+    val version: String,
+    val loader: String,
+    val modeTags: List<String>,
+    val quickActions: List<QuickAction>,
+    val loadingPercent: Int,
+    val loadingText: String,
+    val loadingHint: String,
+    val recentPlay: RecentPlay,
+    val resourceStatus: List<ResourceRow>,
 )
 
-/** 最近活动条目。 */
-data class ActivityItem(
+/** 快速操作磁贴。 */
+data class QuickAction(
     val icon: String,
-    val text: String,
+    val label: String,
+    val colorHex: Long,
+)
+
+/** 最近游玩条目。 */
+data class RecentPlay(
+    val name: String,
+    val detail: String,
     val time: String,
+)
+
+/** 资源状态行。 */
+data class ResourceRow(
+    val icon: String,
+    val label: String,
+    val ready: Boolean,
     val colorHex: Long,
 )

@@ -15,8 +15,9 @@
 
 ## Branch and PR workflow
 - Treat `dev` as the development base branch. `dev` is not considered ahead; start development directly from `dev`.
-- For the Kotlin UI work, use the branch `dev-kotlin` created from `dev`.
-- Before opening a PR, run the relevant focused tests plus the full Gradle check locally when the environment supports it.
+- For the Kotlin UI work, use the branch `dev-kotlin` created from `dev`. Keep feature work committed/pushed to `dev-kotlin`.
+- Do NOT open or merge a pull request into `main` unless the user explicitly grants permission; by default, development stays on `dev-kotlin`.
+- Before any PR the user approves, run the relevant focused tests plus the full Gradle check locally when the environment supports it.
 - PRs should be opened only after tests pass and the CI workflow has completed successfully.
 
 ## Build and test commands

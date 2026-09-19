@@ -36,6 +36,7 @@ sourceSets {
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
+    implementation(compose.materialIconsExtended)
 
     implementation("com.fasterxml.jackson.core:jackson-databind:2.22.2")
     implementation("net.java.dev.jna:jna:5.19.1")
