@@ -35,4 +35,6 @@ jobs:
             -Dsonar.organization=kagurazaka-nana \
             -Dsonar.projectKey=Kagurazaka-Nana_hakimi-launcher \
             -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
+            -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml \
+            -Dsonar.coverage.exclusions=src/main/kotlin/com/minecraft/launcher/ui/**,src/main/kotlin/com/minecraft/launcher/backend/StubLauncherBackend.kt \
+            -Dsonar.exclusions=docs/**,gradle/wrapper/gradle-wrapper.jar
