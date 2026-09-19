@@ -45,3 +45,5 @@ launcherTest/
 # Local tooling / session dirs
 .zcode/
 .mimosa/
+skills/
+plugins/
