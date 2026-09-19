@@ -12,6 +12,9 @@ interface LauncherBackend {
     /** 已知游戏版本列表，供版本选择 UI 展示 */
     suspend fun loadVersions(): List<String>
 
+    /** 首页快照：账号、当前实例、模组、系统状态、最近活动等展示数据 */
+    suspend fun loadHome(): HomeSnapshot
+
     /** 刷新 Mojang version manifest */
     suspend fun refreshManifest()
 
