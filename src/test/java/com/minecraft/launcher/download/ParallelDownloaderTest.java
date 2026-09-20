@@ -113,6 +113,67 @@ class ParallelDownloaderTest {
                 new ParallelDownloader(fetcher, 2, 4, 1).download("https://example.invalid/f", target, "00".repeat(32), "SHA-256", null));
     }
 
+    @Test
+    void retriesFlakyChunkThenSucceeds(@TempDir Path dir) {
+        byte[] content = "retry-me".getBytes(StandardCharsets.UTF_8);
+        final int[] calls = {0};
+        RangeFetcher flaky = new RangeFetcher() {
+            @Override
+            public long size(String url) {
+                return content.length;
+            }
+
+            @Override
+            public byte[] fetch(String url, long start, long end) {
+                if (calls[0]++ == 0) {
+                    throw new RuntimeException("transient failure");
+                }
+                return Arrays.copyOfRange(content, (int) start, (int) end + 1);
+            }
+        };
+        Path target = dir.resolve("out.bin");
+        new ParallelDownloader(flaky, 2, 4, 3).download("https://example.invalid/f", target, null, null, null);
+        assertArrayEquals(content, readAll(target));
+        assertTrue(calls[0] >= 2);
+    }
+
+    @Test
+    void unknownSizeDownloadsWhole(@TempDir Path dir) {
+        byte[] content = "unknown-length".getBytes(StandardCharsets.UTF_8);
+        RangeFetcher unknown = new RangeFetcher() {
+            @Override
+            public long size(String url) {
+                return -1;
+            }
+
+            @Override
+            public byte[] fetch(String url, long start, long end) {
+                return Arrays.copyOf(content, content.length);
+            }
+        };
+        Path target = dir.resolve("out.bin");
+        new ParallelDownloader(unknown, 2, 8, 2).download("https://example.invalid/f", target, null, null, null);
+        assertArrayEquals(content, readAll(target));
+    }
+
+    @Test
+    void retryExhaustedThrows(@TempDir Path dir) {
+        RangeFetcher alwaysFails = new RangeFetcher() {
+            @Override
+            public long size(String url) {
+                return 8;
+            }
+
+            @Override
+            public byte[] fetch(String url, long start, long end) {
+                throw new RuntimeException("persistent failure");
+            }
+        };
+        Path target = dir.resolve("out.bin");
+        assertThrows(DownloadException.class, () ->
+                new ParallelDownloader(alwaysFails, 1, 4, 2).download("https://example.invalid/f", target, null, null, null));
+    }
+
     private static Path writeTemp(Path dir, byte[] content) {
         try {
             Path p = Files.createTempFile(dir, "ref", ".bin");

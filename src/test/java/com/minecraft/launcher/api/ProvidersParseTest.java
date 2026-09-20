@@ -131,4 +131,28 @@ class ProvidersParseTest {
         FakeFetcher failing = new FakeFetcher("", true);
         assertTrue(new McModProvider(failing).search("foo", "mod", 10).isEmpty());
     }
+
+    @Test
+    void modrinthMapsChineseAndAlternateTypes() {
+        FakeFetcher fetcher = new FakeFetcher("{\"hits\":[]}");
+        new ModrinthProvider(fetcher).search("x", "光影", 5);
+        assertTrue(fetcher.lastUrl.contains("project_type%3Ashader"));
+
+        new ModrinthProvider(fetcher).search("x", "datapack", 5);
+        assertTrue(fetcher.lastUrl.contains("project_type%3Adatapack"));
+
+        // 未知类型不加 facets
+        new ModrinthProvider(fetcher).search("x", "unknown", 5);
+        assertTrue(!fetcher.lastUrl.contains("facets"));
+    }
+
+    @Test
+    void curseforgeMapsClassIds() {
+        FakeFetcher fetcher = new FakeFetcher("{\"data\":[]}");
+        new CurseForgeProvider(fetcher, "k").search("x", "plugin", 5);
+        assertTrue(fetcher.lastUrl.contains("classId=5"));
+
+        new CurseForgeProvider(fetcher, "k").search("x", "mod", 5);
+        assertTrue(fetcher.lastUrl.contains("classId=6"));
+    }
 }
