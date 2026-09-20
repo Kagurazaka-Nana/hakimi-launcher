@@ -89,3 +89,11 @@ object HakimiColors {
     val Info = Color(0xFF5B8DEF)
     val Pink = Color(0xFFE86AA6)
 }
+
+// 顶层语义强调色，供各页面直接引用。
+val SuccessGreen = Color(0xFF3FA34D)
+val SuccessBg = Color(0xFFE4F5E8)
+val InfoBlue = Color(0xFF5B8DEF)
+val AccentOrange = Color(0xFFF5A623)
+val AccentPurple = Color(0xFF9B6FE0)
+val AccentPink = Color(0xFFE86AA6)

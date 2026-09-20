@@ -36,8 +36,8 @@ class StubLauncherBackend : LauncherBackend {
 
     override suspend fun loadResources(kind: ResourceKind): List<ResourceItem> = when (kind) {
         ResourceKind.MODS -> listOf(
-            item("sodium", "Sodium 钠", "高性能渲染引擎，大幅提升帧数", "1.21.1", 2_400_000, listOf("性能优化")),
-            item("iris", "Iris 光影加载器", "在 Fabric 上运行 Iris 光影", "1.7.0", 1_200_000, listOf("性能优化", "光影")),
+            item("sodium", "Sodium 钠", "高性能渲染引擎，大幅提升帧数", "1.21.1", 2_400_000, listOf("性能优化"), "https://upload.wikimedia.org/wikipedia/commons/1/16/Minecraft_Turkey_Skin.png"),
+            item("iris", "Iris 光影加载器", "在 Fabric 上运行 Iris 光影", "1.7.0", 1_200_000, listOf("性能优化", "光影"), "https://upload.wikimedia.org/wikipedia/commons/d/d4/Grass_Block_%28texture%29_MCJE.png"),
             item("jei", "Just Enough Items", "物品与合成表查询", "1.24.0", 5_000_000, listOf("建筑")),
             item("create", "Create 机械动力", "蒸汽朋克机械自动化", "0.5.1", 3_100_000, listOf("科技")),
             item("journeymap", "JourneyMap 小地图", "实时小地图与全屏地图", "5.9.0", 2_800_000, listOf("冒险")),
@@ -110,11 +110,29 @@ class StubLauncherBackend : LauncherBackend {
         WikiArticle("w4", "常见问题排查", "支持", "启动失败、白屏、崩溃的排查思路。", "3 天前"),
     )
 
+    override suspend fun loadSettings(): SettingsSnapshot = SettingsSnapshot(
+        theme = "浅色",
+        language = "简体中文",
+        javaPath = "C:\\Program Files\\Java\\jdk-21",
+        javaVersion = "21.0.3 · 64 位",
+        maxMemoryMb = 4096,
+        memoryMinMb = 512,
+        memoryMaxMb = 8192,
+        downloadSource = "官方源（推荐）",
+        concurrency = 4,
+        concurrencyMin = 1,
+        concurrencyMax = 16,
+        jvmArgs = "-XX:+UseG1GC -XX:MaxGCPauseMillis=200",
+        debugMode = false,
+        account = "已登录：hakimi（离线模式）",
+        privacy = "不收集使用数据 · 仅本地存储",
+    )
+
     override suspend fun createInstance(name: String, version: String, loader: String) = Unit
 
     override suspend fun launch(instanceName: String) = Unit
 
-    private fun item(id: String, name: String, summary: String, version: String, downloads: Long, cats: List<String>) =
+    private fun item(id: String, name: String, summary: String, version: String, downloads: Long, cats: List<String>, iconUrl: String? = null) =
         ResourceItem(
             id = id,
             name = name,
@@ -124,6 +142,7 @@ class StubLauncherBackend : LauncherBackend {
             downloads = downloads,
             categories = cats,
             author = "hakimi",
+            iconUrl = iconUrl,
             enabled = false,
         )
 }

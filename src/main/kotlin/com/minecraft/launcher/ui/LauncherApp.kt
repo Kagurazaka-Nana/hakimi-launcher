@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.composeunstyled.EscapeHandler
 import com.minecraft.launcher.backend.ResourceKind
 import com.minecraft.launcher.ui.components.ResourceDetailDialog
 import com.minecraft.launcher.ui.state.LaunchpadGroup
@@ -148,6 +149,7 @@ private fun NavHost(vm: LauncherViewModel) {
         LauncherPage.WIKI -> WikiScreen(vm)
         LauncherPage.SCREENSHOTS -> ScreenshotsScreen(vm)
         LauncherPage.SKIN -> SkinSelectorScreen(vm)
+        LauncherPage.SETTINGS -> SettingsScreen(vm)
     }
 }
 
@@ -238,6 +240,8 @@ private fun LaunchpadButton(onClick: () -> Unit, modifier: Modifier = Modifier) 
 
 @Composable
 private fun LaunchpadOverlay(vm: LauncherViewModel, filter: LaunchpadGroup, query: String, tabs: List<LauncherPage>) {
+    // Compose Unstyled：可访问的 Esc 关闭处理
+    EscapeHandler(callback = { vm.closeLaunchpad() })
     Box(
         modifier = Modifier
             .fillMaxSize()

@@ -33,6 +33,9 @@ interface LauncherBackend {
     /** Wiki 文章列表 */
     suspend fun loadWiki(): List<WikiArticle>
 
+    /** 设置页快照 */
+    suspend fun loadSettings(): SettingsSnapshot
+
     /** 创建实例 */
     suspend fun createInstance(name: String, version: String, loader: String)
 

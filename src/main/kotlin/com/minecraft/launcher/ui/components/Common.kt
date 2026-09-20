@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.minecraft.launcher.backend.ResourceItem
 import com.minecraft.launcher.ui.HakimiIcons
 import com.minecraft.launcher.ui.state.SortMode
@@ -83,6 +84,17 @@ fun IconBadge(icon: ImageVector, color: Color, size: androidx.compose.ui.unit.Dp
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(iconSize))
+    }
+}
+
+/** 圆形头像占位。 */
+@Composable
+fun AvatarCircle(icon: ImageVector, color: Color, size: androidx.compose.ui.unit.Dp = 44.dp) {
+    Box(
+        modifier = Modifier.size(size).clip(CircleShape).background(color.copy(alpha = 0.15f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(size * 0.5f))
     }
 }
 
@@ -195,7 +207,15 @@ fun SearchFilterSortBar(
 fun ResourceCard(item: ResourceItem, icon: ImageVector, color: Color, onToggle: () -> Unit, onOpen: () -> Unit) {
     SoftCard(modifier = Modifier.fillMaxWidth().clickable { onOpen() }) {
         Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
-            PlaceholderThumb(icon = icon, color = color, modifier = Modifier.size(64.dp))
+            if (item.iconUrl != null) {
+                AsyncImage(
+                    model = item.iconUrl,
+                    contentDescription = item.name,
+                    modifier = Modifier.size(64.dp).clip(RoundedCornerShape(14.dp)).background(color.copy(alpha = 0.15f)),
+                )
+            } else {
+                PlaceholderThumb(icon = icon, color = color, modifier = Modifier.size(64.dp))
+            }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(item.name, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp)

@@ -21,6 +21,7 @@ data class ResourceItem(
     val downloads: Long,
     val categories: List<String>,
     val author: String,
+    val iconUrl: String? = null,
     val enabled: Boolean = false,
 )
 
@@ -76,6 +77,25 @@ data class GameVersion(val id: String, val type: String)
 
 /** 加载器选项。 */
 data class LoaderOption(val id: String, val label: String)
+
+/** 设置页快照。 */
+data class SettingsSnapshot(
+    val theme: String,
+    val language: String,
+    val javaPath: String,
+    val javaVersion: String,
+    val maxMemoryMb: Int,
+    val memoryMinMb: Int,
+    val memoryMaxMb: Int,
+    val downloadSource: String,
+    val concurrency: Int,
+    val concurrencyMin: Int,
+    val concurrencyMax: Int,
+    val jvmArgs: String,
+    val debugMode: Boolean,
+    val account: String,
+    val privacy: String,
+)
 
 /** 首页快照。 */
 data class HomeSnapshot(

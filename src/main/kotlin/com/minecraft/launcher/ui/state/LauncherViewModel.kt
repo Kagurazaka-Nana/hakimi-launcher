@@ -9,6 +9,7 @@ import com.minecraft.launcher.backend.ResourceItem
 import com.minecraft.launcher.backend.ResourceKind
 import com.minecraft.launcher.backend.ScreenshotInfo
 import com.minecraft.launcher.backend.ServerInfo
+import com.minecraft.launcher.backend.SettingsSnapshot
 import com.minecraft.launcher.backend.SkinInfo
 import com.minecraft.launcher.backend.SystemStats
 import com.minecraft.launcher.backend.WikiArticle
@@ -44,6 +45,7 @@ enum class LauncherPage(val label: String, val icon: ImageVector, val group: Lau
     WIKI("Wiki", HakimiIcons.Wiki, LaunchpadGroup.TOOL),
     SCREENSHOTS("截图", HakimiIcons.Screenshot, LaunchpadGroup.TOOL),
     SKIN("皮肤选择", HakimiIcons.Skin, LaunchpadGroup.TOOL),
+    SETTINGS("设置", HakimiIcons.Settings, LaunchpadGroup.TOOL),
 }
 
 /** 列表排序方式。 */
@@ -72,6 +74,7 @@ data class UiState(
     val servers: List<ServerInfo> = emptyList(),
     val screenshots: List<ScreenshotInfo> = emptyList(),
     val wiki: List<WikiArticle> = emptyList(),
+    val settings: SettingsSnapshot? = null,
     val versions: List<GameVersion> = emptyList(),
     val loaders: List<LoaderOption> = emptyList(),
     val message: String? = null,
@@ -98,6 +101,7 @@ class LauncherViewModel(private val backend: LauncherBackend) {
             val servers = backend.loadServers()
             val screenshots = backend.loadScreenshots()
             val wiki = backend.loadWiki()
+            val settings = backend.loadSettings()
             _state.update {
                 it.copy(
                     home = home,
@@ -109,6 +113,7 @@ class LauncherViewModel(private val backend: LauncherBackend) {
                     servers = servers,
                     screenshots = screenshots,
                     wiki = wiki,
+                    settings = settings,
                 )
             }
         }

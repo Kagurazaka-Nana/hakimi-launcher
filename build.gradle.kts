@@ -38,6 +38,14 @@ dependencies {
     implementation(compose.material3)
     implementation(compose.materialIconsExtended)
 
+    // Compose Unstyled：无样式可访问原语（弹窗/菜单/焦点/键盘）
+    implementation("com.composables:composeunstyled:2.10.0")
+    // compose-fluent-ui：桌面 Fluent/Mica 质感（设置页、按钮）
+    implementation("io.github.compose-fluent:fluent:v0.1.0")
+    // Coil 3：加载 mod/资源包 图标等网络图片
+    implementation("io.coil-kt.coil3:coil-compose:3.6.3")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.6.3")
+
     implementation("com.fasterxml.jackson.core:jackson-databind:2.22.2")
     implementation("net.java.dev.jna:jna:5.19.1")
     implementation("org.slf4j:slf4j-api:2.0.18")
