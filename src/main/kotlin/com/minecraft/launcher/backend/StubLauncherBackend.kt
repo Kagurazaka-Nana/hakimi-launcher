@@ -2,19 +2,14 @@ package com.minecraft.launcher.backend
 
 /**
  * 前端框架阶段的占位实现：不访问网络、不触碰文件系统，
- * 仅向 UI 提供稳定的演示数据（对应 docs/export 视觉稿）。
+ * 仅向 UI 提供稳定的演示数据。真实逻辑后续替换本实现。
  */
 class StubLauncherBackend : LauncherBackend {
-
-    override suspend fun getCurrentUsername(): String = "HakimiCat"
-
-    override suspend fun loadVersions(): List<String> = listOf("1.21.1", "1.20.1", "1.19.4")
 
     override suspend fun loadHome(): HomeSnapshot = HomeSnapshot(
         welcomeTitle = "欢迎回来，旅行者！",
         welcomeSubtitle = "在方块的世界里，和猫咪一起开启新的冒险吧！",
         profileName = "HakimiCat",
-        profileBadge = "👑",
         profileOnline = true,
         profileTagline = "用代码搭建属于自己的世界 —— hakimi",
         instanceName = "生存世界",
@@ -22,77 +17,113 @@ class StubLauncherBackend : LauncherBackend {
         version = "1.21.1",
         loader = "Fabric",
         modeTags = listOf("生存模式", "单人", "Java 21"),
-        quickActions = listOf(
-            QuickAction("cat", "创建实例", 0xFF9B6FE0),
-            QuickAction("folder", "导入实例", 0xFF5B8DEF),
-            QuickAction("puzzle", "管理模组", 0xFF3FA34D),
-            QuickAction("download", "前往下载", 0xFFF5A623),
-        ),
-        loadingPercent = 68,
-        loadingText = "加载中…",
-        loadingHint = "正在准备资源…请稍候~",
-        recentPlay = RecentPlay("生存世界", "1.21.1 · Fabric", "3 小时前"),
-        resourceStatus = listOf(
-            ResourceRow("cube", "游戏文件", true, 0xFF6C5CE7),
-            ResourceRow("puzzle", "加载器", true, 0xFF9B6FE0),
-            ResourceRow("folder", "模组", true, 0xFFF5A623),
-            ResourceRow("image", "资源包", true, 0xFFE86AA6),
-        ),
+        ready = true,
+        resourceCount = 48,
+        totalSizeGb = 2.8,
     )
 
-    override suspend fun loadInstances(): List<InstanceItem> = listOf(
-        InstanceItem("生存世界", "1.21.1", "Fabric", "生存模式", "单人",
-            "和猫咪一起在方块世界中生存，建造，探索！", true, "2025-05-10 14:32", "hakimi"),
-        InstanceItem("整合包冒险", "1.20.1", "Forge", "冒险模式", "多人",
-            "大型整合包，新增数百个模组，带你体验不一样的冒险！", false, "2025-05-08 19:26", "小黑喵"),
-        InstanceItem("原版建筑", "1.19.4", "Vanilla", "创造模式", "单人",
-            "纯净原版，专注建筑与美学，搭建属于你的梦幻家园。", false, "2025-05-03 16:20", "建筑猫"),
+    override suspend fun loadSystemStats(): SystemStats = SystemStats(
+        cpuPercent = 24,
+        memUsedGb = 5.2,
+        memTotalGb = 16.0,
+        vramUsedMb = 1800,
+        vramTotalMb = 8192,
+        diskReadMbps = 42.0,
+        diskWriteMbps = 18.0,
+        networkLatencyMs = 36,
+        networkOnline = true,
     )
 
-    override suspend fun loadDownloads(): DownloadsSnapshot = DownloadsSnapshot(
-        categories = listOf("游戏版本", "整合包", "模组", "资源包", "光影"),
-        selectedCategory = "游戏版本",
-        items = listOf(
-            DownloadItem("Minecraft 1.21.1", "最新", "1.21.1", "Fabric / Forge",
-                "全新的世界生成机制，更多生物与方块，带来更丰富的探索体验。", "859.2 MB"),
-            DownloadItem("Minecraft 1.20.4", "稳定版", "1.20.4", "Fabric / Forge / Quilt",
-                "经典的稳定版本，适合长期生存与多人联机。", "801.7 MB"),
-            DownloadItem("典范整合包 2.4.7", "热门", "1.20.1", "Forge",
-                "集成了科技、魔法、冒险等多种玩法，适合喜欢探索的玩家。", "3.6 GB"),
-            DownloadItem("玩家必备模组包 1.8.9", "推荐", "1.20.1", "Forge / Fabric",
-                "包含小地图、背包整理、性能优化等实用模组，提升游戏体验。", "248.5 MB"),
-            DownloadItem("BSL 光影 8.1.02", "光影", "1.20.1", "OptiFine",
-                "真实光影效果，改进的水面与光照，带来更沉浸的视觉体验。", "248.5 MB"),
-        ),
-        queue = listOf(
-            DownloadTask("Minecraft 1.21.1", 68, "下载中", "582.3 MB / 859.2 MB · 2.1 MB/s", "pause"),
-            DownloadTask("典范整合包 2.4.7", 25, "下载中", "921.4 MB / 3.6 GB · 1.8 MB/s", "pause"),
-            DownloadTask("玩家必备模组包 1.8.9", null, "下载完成", "248.5 MB", "install"),
-            DownloadTask("BSL 光影 8.1.02", null, "等待中", "64.3 MB", "start"),
-        ),
+    override suspend fun loadResources(kind: ResourceKind): List<ResourceItem> = when (kind) {
+        ResourceKind.MODS -> listOf(
+            item("sodium", "Sodium 钠", "高性能渲染引擎，大幅提升帧数", "1.21.1", 2_400_000, listOf("性能优化")),
+            item("iris", "Iris 光影加载器", "在 Fabric 上运行 Iris 光影", "1.7.0", 1_200_000, listOf("性能优化", "光影")),
+            item("jei", "Just Enough Items", "物品与合成表查询", "1.24.0", 5_000_000, listOf("建筑")),
+            item("create", "Create 机械动力", "蒸汽朋克机械自动化", "0.5.1", 3_100_000, listOf("科技")),
+            item("journeymap", "JourneyMap 小地图", "实时小地图与全屏地图", "5.9.0", 2_800_000, listOf("冒险")),
+        )
+        ResourceKind.RESOURCE_PACK -> listOf(
+            item("faithful", "Faithful 32x", "高清重制原版材质", "1.21", 900_000, listOf("写实")),
+            item("pixelpower", "Pixel Power 16x", "精致低像素风格", "1.20", 320_000, listOf("低像素")),
+            item("cartoon", "卡通渲染包", "明亮可爱的卡通风格", "1.21", 150_000, listOf("卡通")),
+        )
+        ResourceKind.DATA_PACK -> listOf(
+            item("recipes", "自定义配方", "调整合成配方的数据包", "1.21", 80_000, listOf("配方")),
+            item("loot", "战利品表编辑", "自定义怪物掉落", "1.21", 60_000, listOf("战利品")),
+        )
+        ResourceKind.SHADER -> listOf(
+            item("bsl", "BSL Shaders", "均衡画质与性能", "8.1", 1_500_000, listOf("电影感")),
+            item("complementary", "Complementary", "兼容大多数模组", "4.9", 1_100_000, listOf("写实")),
+            item("seus", "SEUS PTGI", "光线追踪风格光影", "1.0", 700_000, listOf("写实")),
+        )
+        ResourceKind.MODPACK -> listOf(
+            item("vault", "典范整合包", "科技、魔法、冒险综合", "2.4.7", 400_000, listOf("科技", "魔法")),
+            item("adventure", "玩家必备包", "实用模组合集", "1.8.9", 260_000, listOf("冒险")),
+        )
+        ResourceKind.PLUGIN -> listOf(
+            item("essentials", "EssentialsX", "服务器基础指令插件", "2.20", 500_000, listOf("管理")),
+            item("luckperms", "LuckPerms", "权限管理插件", "5.4", 480_000, listOf("权限")),
+        )
+        ResourceKind.SERVER -> listOf(
+            item("vanilla", "原版服务端", "纯净多人服务端", "1.21.1", 300_000, listOf("生存")),
+            item("paper", "Paper 服务端", "高性能 Bukkit 分支", "1.21", 350_000, listOf("生存")),
+        )
+    }
+
+    override suspend fun loadVersions(): List<GameVersion> = listOf(
+        GameVersion("1.21.1", "正式版"),
+        GameVersion("1.20.6", "正式版"),
+        GameVersion("1.20.1", "正式版"),
+        GameVersion("1.19.4", "正式版"),
+        GameVersion("24w21a", "快照"),
     )
 
-    override suspend fun loadSettings(): SettingsSnapshot = SettingsSnapshot(
-        theme = "浅色",
-        language = "简体中文",
-        javaPath = "C:\\Program Files\\Java\\jdk-21",
-        javaVersion = "21.0.3 · 64 位",
-        maxMemoryMb = 4096,
-        memoryMinMb = 512,
-        memoryMaxMb = 8192,
-        downloadSource = "官方源（推荐）",
-        concurrency = 4,
-        concurrencyMin = 1,
-        concurrencyMax = 16,
-        jvmArgs = "-XX:+UseG1GC -XX:MaxGCPauseMillis=200",
-        debugMode = false,
-        account = "已登录：hakimi（离线模式）",
-        privacy = "不收集使用数据 · 仅本地存储",
+    override suspend fun loadLoaders(): List<LoaderOption> = listOf(
+        LoaderOption("vanilla", "原版"),
+        LoaderOption("fabric", "Fabric"),
+        LoaderOption("forge", "Forge"),
+        LoaderOption("quilt", "Quilt"),
+        LoaderOption("neoforge", "NeoForge"),
     )
 
-    override suspend fun refreshManifest() = Unit
+    override suspend fun loadSkins(): List<SkinInfo> = listOf(
+        SkinInfo("steve", "Steve", true),
+        SkinInfo("alex", "Alex", false),
+        SkinInfo("cat", "猫咪套装", false),
+        SkinInfo("ninja", "忍者", false),
+    )
 
-    override suspend fun ensureVersionReady(versionId: String) = Unit
+    override suspend fun loadServers(): List<ServerInfo> = listOf(
+        ServerInfo("s1", "hakimi 生存服", "play.hakimi.example", "1.21.1", true, 42),
+        ServerInfo("s2", "空岛乐园", "sky.hakimi.example", "1.20.1", true, 17),
+        ServerInfo("s3", "小游戏大厅", "mini.hakimi.example", "1.21", false, 0),
+    )
 
-    override suspend fun launch(versionId: String) = Unit
+    override suspend fun loadScreenshots(): List<ScreenshotInfo> = (1..6).map { i ->
+        ScreenshotInfo("shot$i", "screenshot_${2025050 + i}.png", "2025-05-1${i % 9} 14:0$i", "${2 + i}.${i} MB")
+    }
+
+    override suspend fun loadWiki(): List<WikiArticle> = listOf(
+        WikiArticle("w1", "如何创建第一个实例", "入门", "从选择版本到启动游戏的完整流程。", "2 天前"),
+        WikiArticle("w2", "Fabric 与 Forge 的区别", "加载器", "两种主流加载器的生态与兼容性对比。", "5 天前"),
+        WikiArticle("w3", "光影安装指南", "光影", "在 Fabric / OptiFine 下安装光影的方法。", "1 周前"),
+        WikiArticle("w4", "常见问题排查", "支持", "启动失败、白屏、崩溃的排查思路。", "3 天前"),
+    )
+
+    override suspend fun createInstance(name: String, version: String, loader: String) = Unit
+
+    override suspend fun launch(instanceName: String) = Unit
+
+    private fun item(id: String, name: String, summary: String, version: String, downloads: Long, cats: List<String>) =
+        ResourceItem(
+            id = id,
+            name = name,
+            summary = summary,
+            description = "$summary。由社区维护，兼容当前实例版本，支持一键启用 / 禁用。",
+            version = version,
+            downloads = downloads,
+            categories = cats,
+            author = "hakimi",
+            enabled = false,
+        )
 }

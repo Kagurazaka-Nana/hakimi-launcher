@@ -47,3 +47,5 @@ launcherTest/
 .mimosa/
 skills/
 plugins/
+.workbuddy/
+.zcodeignore

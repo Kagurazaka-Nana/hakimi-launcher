@@ -2,6 +2,7 @@ package com.minecraft.launcher.backend
 
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -11,52 +12,49 @@ import org.junit.jupiter.api.Test
  */
 class StubLauncherBackendTest {
 
-    @Test
-    fun `loadHome returns a fully populated snapshot`() = runBlocking {
-        val snapshot = StubLauncherBackend().loadHome()
+    private val backend = StubLauncherBackend()
 
-        assertTrue(snapshot.welcomeTitle.isNotBlank())
-        assertEquals("HakimiCat", snapshot.profileName)
-        assertEquals("生存世界", snapshot.instanceName)
-        assertEquals("1.21.1", snapshot.version)
-        assertEquals(4, snapshot.quickActions.size)
-        assertTrue(snapshot.loadingPercent in 0..100)
-        assertEquals(4, snapshot.resourceStatus.size)
-        assertTrue(snapshot.resourceStatus.all { it.ready })
+    @Test
+    fun `loadHome returns populated snapshot`() = runBlocking {
+        val home = backend.loadHome()
+        assertTrue(home.welcomeTitle.isNotBlank())
+        assertEquals("HakimiCat", home.profileName)
+        assertEquals("生存世界", home.instanceName)
+        assertEquals("1.21.1", home.version)
+        assertTrue(home.resourceCount > 0)
     }
 
     @Test
-    fun `loadInstances returns populated instance list`() = runBlocking {
-        val instances = StubLauncherBackend().loadInstances()
-        assertEquals(3, instances.size)
-        assertTrue(instances.any { it.running })
-        assertTrue(instances.all { it.name.isNotBlank() && it.version.isNotBlank() })
+    fun `loadSystemStats returns sane ranges`() = runBlocking {
+        val stats = backend.loadSystemStats()
+        assertTrue(stats.cpuPercent in 0..100)
+        assertTrue(stats.memUsedGb <= stats.memTotalGb)
+        assertTrue(stats.vramUsedMb <= stats.vramTotalMb)
+        assertTrue(stats.networkOnline)
     }
 
     @Test
-    fun `loadDownloads returns categories items and queue`() = runBlocking {
-        val downloads = StubLauncherBackend().loadDownloads()
-        assertEquals(5, downloads.categories.size)
-        assertTrue(downloads.items.isNotEmpty())
-        assertEquals(4, downloads.queue.size)
-        assertTrue(downloads.queue.any { it.percent != null })
+    fun `loadResources returns items for every kind`() = runBlocking {
+        ResourceKind.entries.forEach { kind ->
+            val items = backend.loadResources(kind)
+            assertTrue(items.isNotEmpty(), "$kind should not be empty")
+            assertTrue(items.all { it.name.isNotBlank() && it.version.isNotBlank() })
+        }
     }
 
     @Test
-    fun `loadSettings returns populated settings`() = runBlocking {
-        val settings = StubLauncherBackend().loadSettings()
-        assertTrue(settings.javaPath.isNotBlank())
-        assertTrue(settings.maxMemoryMb in settings.memoryMinMb..settings.memoryMaxMb)
-        assertTrue(settings.concurrency in settings.concurrencyMin..settings.concurrencyMax)
-    }
-
-    @Test
-    fun `other stub operations stay side-effect free`() = runBlocking {
-        val backend = StubLauncherBackend()
-        assertEquals("HakimiCat", backend.getCurrentUsername())
+    fun `loaders versions skins servers screenshots wiki populated`() = runBlocking {
         assertTrue(backend.loadVersions().isNotEmpty())
-        backend.refreshManifest()
-        backend.ensureVersionReady("1.21.1")
-        backend.launch("1.21.1")
+        assertTrue(backend.loadLoaders().isNotEmpty())
+        assertTrue(backend.loadSkins().any { it.selected })
+        assertTrue(backend.loadServers().isNotEmpty())
+        assertTrue(backend.loadScreenshots().isNotEmpty())
+        assertNotNull(backend.loadWiki().firstOrNull())
+    }
+
+    @Test
+    fun `side-effect operations complete`() = runBlocking {
+        backend.createInstance("测试", "1.21.1", "fabric")
+        backend.launch("测试")
     }
 }
