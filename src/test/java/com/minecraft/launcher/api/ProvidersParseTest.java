@@ -155,4 +155,16 @@ class ProvidersParseTest {
         new CurseForgeProvider(fetcher, "k").search("x", "mod", 5);
         assertTrue(fetcher.lastUrl.contains("classId=6"));
     }
+
+    @Test
+    void providersTolerateMalformedResponses() {
+        assertTrue(new CurseForgeProvider(null, "k").parse("not json").isEmpty());
+        assertTrue(new McModProvider().parseHtml(null, 5).isEmpty());
+    }
+
+    @Test
+    void defaultServiceIsConstructible() {
+        // 仅验证默认多源装配可构造（不发起网络请求）
+        assertTrue(ResourceSearchService.defaultService() != null);
+    }
 }
