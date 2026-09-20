@@ -1,6 +1,7 @@
 package com.minecraft.launcher.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,245 +10,235 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.DataObject
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Terminal
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.minecraft.launcher.backend.SettingsSnapshot
 import com.minecraft.launcher.ui.components.AvatarCircle
-import com.minecraft.launcher.ui.components.IconBadge
 import com.minecraft.launcher.ui.components.PageHeader
-import com.minecraft.launcher.ui.components.Pill
-import com.minecraft.launcher.ui.components.SectionHeaderRow
-import com.minecraft.launcher.ui.components.SoftCard
+import com.minecraft.launcher.ui.theme.HakimiButton
+import com.minecraft.launcher.ui.theme.HakimiCard
+import com.minecraft.launcher.ui.theme.HakimiChip
+import com.minecraft.launcher.ui.theme.HakimiIcon
+import com.minecraft.launcher.ui.theme.HakimiText
+import com.minecraft.launcher.ui.theme.HakimiTheme
+import com.minecraft.launcher.ui.theme.HakimiToggle
 import com.minecraft.launcher.ui.state.LauncherViewModel
-import com.minecraft.launcher.ui.theme.AccentOrange
-import com.minecraft.launcher.ui.theme.AccentPurple
-import com.minecraft.launcher.ui.theme.InfoBlue
-import com.minecraft.launcher.ui.theme.SuccessBg
-import com.minecraft.launcher.ui.theme.SuccessGreen
-import io.github.composefluent.FluentTheme
-import io.github.composefluent.component.AccentButton
+import kotlin.math.roundToInt
 
 @Composable
 fun SettingsScreen(vm: LauncherViewModel) {
     val state by vm.state.collectAsState()
     val data = state.settings
+    val c = HakimiTheme.colors
 
-    FluentTheme {
-        Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            PageHeader(
-                icon = Icons.Filled.Settings,
-                title = "设置",
-                subtitle = "调整你的启动器偏好，让 Minecraft 之旅更顺畅！",
-                trailing = {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AvatarCircle(Icons.Filled.Person, AccentPurple)
-                        Column {
-                            Text("hakimi 👑", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-                            Text("陪你探索更多方块世界～", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-                        }
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        PageHeader(
+            icon = HakimiIcons.Settings,
+            title = "设置",
+            subtitle = "调整你的启动器偏好，让 Minecraft 之旅更顺畅！",
+            trailing = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AvatarCircle(HakimiIcons.Person, c.primary)
+                    Column {
+                        HakimiText("hakimi 👑", style = HakimiTheme.type.label)
+                        HakimiText("陪你探索更多方块世界～", style = HakimiTheme.type.caption, color = c.textMuted)
                     }
                 }
-            )
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                    AppearanceCard(data)
-                    DownloadSourceCard(data)
-                }
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                    JavaMemoryCard(data)
-                    LaunchArgsCard(data)
-                    AccountPrivacyCard(data)
-                }
             }
+        )
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                AccentButton(onClick = { /* 保存设置：待接入后端持久化 */ }) {
-                    Icon(Icons.Filled.Save, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("保存设置")
-                }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                AppearanceCard(data?.theme ?: "", data?.language ?: "")
+                DownloadSourceCard(data?.downloadSource ?: "", data?.concurrency ?: 4, data?.concurrencyMin ?: 1, data?.concurrencyMax ?: 16)
             }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                JavaMemoryCard(data?.javaPath ?: "", data?.javaVersion ?: "", data?.maxMemoryMb ?: 4096, data?.memoryMinMb ?: 512, data?.memoryMaxMb ?: 8192)
+                LaunchArgsCard(data?.jvmArgs ?: "", data?.debugMode ?: false)
+                AccountPrivacyCard(data?.account ?: "", data?.privacy ?: "")
+            }
+        }
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            HakimiButton(text = "保存设置", icon = HakimiIcons.Check, onClick = { /* 保存：待接入持久化 */ })
         }
     }
 }
 
 @Composable
-private fun AppearanceCard(data: SettingsSnapshot?) {
-    SoftCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            SectionHeaderRow(icon = Icons.Filled.Palette, title = "外观", color = AccentPurple)
-            Text("主题切换", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
+private fun AppearanceCard(theme: String, language: String) {
+    HakimiCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            SectionTitle(HakimiIcons.Settings, "外观")
+            HakimiText("主题切换", style = HakimiTheme.type.label)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ThemeOption("浅色", selected = data?.theme == "浅色")
-                ThemeOption("深色", selected = false)
-                ThemeOption("跟随系统", selected = false)
+                listOf("浅色", "深色", "跟随系统").forEach { HakimiChip(it, selected = it == theme) }
             }
-            Text("语言选择", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
-            LabeledField(icon = Icons.Filled.Language, value = data?.language ?: "")
+            HakimiText("语言选择", style = HakimiTheme.type.label)
+            ReadOnlyField(language.ifBlank { "简体中文" })
         }
     }
 }
 
 @Composable
-private fun ThemeOption(label: String, selected: Boolean) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+private fun JavaMemoryCard(javaPath: String, javaVersion: String, maxMem: Int, min: Int, max: Int) {
+    val c = HakimiTheme.colors
+    HakimiCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            SectionTitle(HakimiIcons.Memory, "Java 与内存")
+            HakimiText("Java 路径", style = HakimiTheme.type.label)
+            ReadOnlyField(javaPath.ifBlank { "C:\\Program Files\\Java\\jdk-21" })
+            HakimiText("Java 版本：${javaVersion.ifBlank { "21.0.3 · 64 位" }}", style = HakimiTheme.type.caption, color = c.textMuted)
+            HakimiText("最大内存", style = HakimiTheme.type.label)
+            HakimiSlider(initialValue = maxMem.toFloat(), valueRange = min.toFloat()..max.toFloat()) { v ->
+                HakimiText("${v.toInt()} MB", style = HakimiTheme.type.caption, color = c.primary)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DownloadSourceCard(source: String, concurrency: Int, min: Int, max: Int) {
+    val c = HakimiTheme.colors
+    HakimiCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            SectionTitle(HakimiIcons.Download, "下载源")
+            HakimiText("下载源地址", style = HakimiTheme.type.label)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ReadOnlyField(source.ifBlank { "官方源（推荐）" }, modifier = Modifier.weight(1f))
+                HakimiChip("连接正常", color = c.success, selected = true)
+            }
+            HakimiText("并发下载数", style = HakimiTheme.type.label)
+            HakimiSlider(initialValue = concurrency.toFloat(), valueRange = min.toFloat()..max.toFloat()) { v ->
+                HakimiText("${v.toInt()} 个", style = HakimiTheme.type.caption, color = c.primary)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LaunchArgsCard(jvmArgs: String, debugMode: Boolean) {
+    val c = HakimiTheme.colors
+    var debug by remember { mutableFloatStateOf(if (debugMode) 1f else 0f) }
+    HakimiCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            SectionTitle(HakimiIcons.Settings, "启动参数")
+            HakimiText("JVM 参数（可选）", style = HakimiTheme.type.label)
+            ReadOnlyField(jvmArgs.ifBlank { "-XX:+UseG1GC -XX:MaxGCPauseMillis=200" })
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.weight(1f)) {
+                    HakimiText("启用调试模式", style = HakimiTheme.type.label)
+                    HakimiText("启动时显示更多日志信息，便于排查问题。", style = HakimiTheme.type.caption, color = c.textMuted)
+                }
+                HakimiToggle(checked = debug > 0.5f, onCheckedChange = { debug = if (it) 1f else 0f })
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccountPrivacyCard(account: String, privacy: String) {
+    val c = HakimiTheme.colors
+    HakimiCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            SectionTitle(HakimiIcons.Person, "账户与隐私")
+            SettingLink("登录账户", account.ifBlank { "已登录：hakimi（离线模式）" })
+            SettingLink("隐私设置", privacy.ifBlank { "不收集使用数据 · 仅本地存储" })
+        }
+    }
+}
+
+@Composable
+private fun SectionTitle(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        HakimiIcon(icon, null, HakimiTheme.colors.primary, size = 18.dp)
+        HakimiText(title, style = HakimiTheme.type.title)
+    }
+}
+
+@Composable
+private fun ReadOnlyField(value: String, modifier: Modifier = Modifier) {
+    val c = HakimiTheme.colors
+    Row(
+        modifier = modifier.fillMaxWidth().clip(HakimiTheme.shapes.medium).background(c.surfaceMuted).padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HakimiText(value, style = HakimiTheme.type.body, color = c.text, modifier = Modifier.weight(1f), maxLines = 1)
+    }
+}
+
+@Composable
+private fun SettingLink(title: String, value: String) {
+    val c = HakimiTheme.colors
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(modifier = Modifier.weight(1f)) {
+            HakimiText(title, style = HakimiTheme.type.label)
+            HakimiText(value, style = HakimiTheme.type.caption, color = c.textMuted)
+        }
+        HakimiText("›", style = HakimiTheme.type.title, color = c.textMuted)
+    }
+}
+
+/** 自定义横向滑块（Foundation，无 Material）。 */
+@Composable
+private fun HakimiSlider(
+    initialValue: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    onValue: @Composable (Float) -> Unit,
+) {
+    val c = HakimiTheme.colors
+    var value by remember { mutableFloatStateOf(initialValue) }
+    val trackWidth = 240.dp
+    val span = (valueRange.endInclusive - valueRange.start).let { if (it <= 0f) 1f else it }
+    val fraction = ((value - valueRange.start) / span).coerceIn(0f, 1f)
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Box(
             modifier = Modifier
-                .size(width = 72.dp, height = 48.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant)
-        )
-        Text(label, color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
-    }
-}
-
-@Composable
-private fun JavaMemoryCard(data: SettingsSnapshot?) {
-    SoftCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            SectionHeaderRow(icon = Icons.Filled.Memory, title = "Java 与内存", color = InfoBlue)
-            Text("Java 路径", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = data?.javaPath ?: "", onValueChange = {}, modifier = Modifier.weight(1f), enabled = false, singleLine = true, shape = RoundedCornerShape(10.dp))
-                Icon(Icons.Filled.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Text("Java 版本：${data?.javaVersion ?: ""}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-            Text("最大内存", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
-            var mem by remember { mutableStateOf(data?.maxMemoryMb?.toFloat() ?: 4096f) }
-            Slider(value = mem, onValueChange = { mem = it }, valueRange = (data?.memoryMinMb ?: 512).toFloat()..(data?.memoryMaxMb ?: 8192).toFloat())
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("${data?.memoryMinMb ?: 512} MB", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-                Text("${mem.toInt()} MB", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Text("${data?.memoryMaxMb ?: 8192} MB", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-            }
+                .width(trackWidth)
+                .height(28.dp)
+                .pointerInput(valueRange) {
+                    detectHorizontalDragGestures { change, _ ->
+                        val w = size.width
+                        val f = (change.position.x / w).coerceIn(0f, 1f)
+                        value = valueRange.start + f * span
+                    }
+                },
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Box(modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape).background(c.surfaceMuted))
+            Box(modifier = Modifier.fillMaxWidth(fraction).height(8.dp).clip(CircleShape).background(c.primary))
+            Box(
+                modifier = Modifier
+                    .offset { IntOffset((trackWidth.toPx() * fraction).roundToInt() - 12, 0) }
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(c.surface),
+            )
         }
-    }
-}
-
-@Composable
-private fun DownloadSourceCard(data: SettingsSnapshot?) {
-    SoftCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            SectionHeaderRow(icon = Icons.Filled.Download, title = "下载源", color = MaterialTheme.colorScheme.primary)
-            Text("下载源地址", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                LabeledField(icon = Icons.Filled.DataObject, value = data?.downloadSource ?: "", modifier = Modifier.weight(1f))
-                Pill("连接正常", color = SuccessGreen)
-            }
-            Text("并发下载数", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
-            var conc by remember { mutableStateOf(data?.concurrency?.toFloat() ?: 4f) }
-            Slider(value = conc, onValueChange = { conc = it }, valueRange = (data?.concurrencyMin ?: 1).toFloat()..(data?.concurrencyMax ?: 16).toFloat())
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("${data?.concurrencyMin ?: 1}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-                Text("${conc.toInt()} 个", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Text("${data?.concurrencyMax ?: 16}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-            }
+        Row(modifier = Modifier.width(trackWidth), horizontalArrangement = Arrangement.SpaceBetween) {
+            HakimiText("${valueRange.start.toInt()}", style = HakimiTheme.type.caption, color = c.textMuted)
+            onValue(value)
+            HakimiText("${valueRange.endInclusive.toInt()}", style = HakimiTheme.type.caption, color = c.textMuted)
         }
-    }
-}
-
-@Composable
-private fun LaunchArgsCard(data: SettingsSnapshot?) {
-    var debug by remember { mutableStateOf(data?.debugMode ?: false) }
-    SoftCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            SectionHeaderRow(icon = Icons.Filled.Terminal, title = "启动参数", color = AccentPurple)
-            Text("JVM 参数（可选）", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = data?.jvmArgs ?: "", onValueChange = {}, modifier = Modifier.weight(1f), singleLine = true, shape = RoundedCornerShape(10.dp))
-                OutlinedButton(onClick = {}, shape = RoundedCornerShape(10.dp)) { Text("重置", fontSize = 12.sp) }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Filled.BugReport, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("启用调试模式", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
-                    Text("启动时显示更多日志信息，便于排查问题。", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-                }
-                Switch(checked = debug, onCheckedChange = { debug = it })
-            }
-        }
-    }
-}
-
-@Composable
-private fun AccountPrivacyCard(data: SettingsSnapshot?) {
-    SoftCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SectionHeaderRow(icon = Icons.Filled.Lock, title = "账户与隐私", color = AccentOrange)
-            SettingLink(Icons.Filled.Person, "登录账户", data?.account ?: "")
-            SettingLink(Icons.Filled.Lock, "隐私设置", data?.privacy ?: "")
-        }
-    }
-}
-
-@Composable
-private fun SettingLink(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, value: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        IconBadge(icon = icon, color = MaterialTheme.colorScheme.onSurfaceVariant, size = 32.dp, iconSize = 16.dp)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-        }
-        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
-    }
-}
-
-@Composable
-private fun LabeledField(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-        Text(value, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, modifier = Modifier.weight(1f))
-        Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = SuccessGreen, modifier = Modifier.size(16.dp))
     }
 }

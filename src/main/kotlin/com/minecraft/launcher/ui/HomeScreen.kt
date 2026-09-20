@@ -1,6 +1,7 @@
 package com.minecraft.launcher.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,34 +12,29 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.minecraft.launcher.ui.components.PageHeader
-import com.minecraft.launcher.ui.components.Pill
-import com.minecraft.launcher.ui.components.SoftCard
 import com.minecraft.launcher.ui.components.StatBar
+import com.minecraft.launcher.ui.theme.HakimiButton
+import com.minecraft.launcher.ui.theme.HakimiCard
+import com.minecraft.launcher.ui.theme.HakimiChip
+import com.minecraft.launcher.ui.theme.HakimiIcon
+import com.minecraft.launcher.ui.theme.HakimiText
+import com.minecraft.launcher.ui.theme.HakimiTheme
 import com.minecraft.launcher.ui.state.LauncherViewModel
-import com.minecraft.launcher.ui.theme.HakimiColors
 
 @Composable
 fun HomeScreen(vm: LauncherViewModel) {
     val state by vm.state.collectAsState()
     val home = state.home
     val stats = state.systemStats
+    val c = HakimiTheme.colors
 
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -50,57 +46,50 @@ fun HomeScreen(vm: LauncherViewModel) {
             subtitle = home?.welcomeSubtitle ?: "",
         )
 
-        // 当前实例
-        SoftCard(modifier = Modifier.fillMaxWidth()) {
-            Row(modifier = Modifier.fillMaxWidth().padding(20.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+        HakimiCard(modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 Column(modifier = Modifier.weight(1.6f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Pill("当前实例")
-                    Text(home?.instanceName ?: "…", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    Text(home?.instanceDescription ?: "", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                    HakimiChip("当前实例", color = c.primary)
+                    HakimiText(home?.instanceName ?: "…", style = HakimiTheme.type.display)
+                    HakimiText(home?.instanceDescription ?: "", style = HakimiTheme.type.body, color = c.textMuted)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        home?.modeTags?.forEach { Pill(it, HakimiColors.Info) }
+                        home?.modeTags?.forEach { HakimiChip(it, color = c.accent) }
                     }
                     Spacer(modifier = Modifier.height(6.dp))
-                    Button(
+                    HakimiButton(
+                        text = "启动游戏  ${home?.version ?: ""}",
+                        icon = HakimiIcons.Launch,
                         onClick = { vm.launch() },
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                    ) {
-                        Icon(HakimiIcons.Launch, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("启动游戏  ${home?.version ?: ""}", fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                    }
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    InfoTile("版本", home?.version ?: "-", HakimiIcons.Mods, MaterialTheme.colorScheme.primary)
-                    InfoTile("加载器", home?.loader ?: "-", HakimiIcons.Plugin, HakimiColors.Info)
-                    InfoTile("资源数", "${home?.resourceCount ?: 0} 个", HakimiIcons.Modpack, HakimiColors.Pink)
-                    InfoTile("总大小", "${home?.totalSizeGb ?: 0.0} GB", HakimiIcons.Disk, HakimiColors.Success)
+                    InfoTile("版本", home?.version ?: "-", HakimiIcons.Mods, c.primary)
+                    InfoTile("加载器", home?.loader ?: "-", HakimiIcons.Plugin, c.accent)
+                    InfoTile("资源数", "${home?.resourceCount ?: 0} 个", HakimiIcons.Modpack, c.success)
+                    InfoTile("总大小", "${home?.totalSizeGb ?: 0.0} GB", HakimiIcons.Disk, c.warning)
                 }
             }
         }
 
-        // 系统监控
-        SoftCard(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        HakimiCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(HakimiIcons.Cpu, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text("系统监控", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp)
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text("实时", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    HakimiIcon(HakimiIcons.Cpu, null, c.primary, size = 18.dp)
+                    HakimiText("系统监控", style = HakimiTheme.type.title, modifier = Modifier.weight(1f))
+                    HakimiText("实时", style = HakimiTheme.type.caption, color = c.textMuted)
                 }
                 if (stats != null) {
-                    StatBar(HakimiIcons.Cpu, "CPU", "${stats.cpuPercent}%", stats.cpuPercent / 100f, MaterialTheme.colorScheme.primary)
-                    StatBar(HakimiIcons.Memory, "内存", "%.1f / %.0f GB".format(stats.memUsedGb, stats.memTotalGb), (stats.memUsedGb / stats.memTotalGb).toFloat(), HakimiColors.Info)
-                    StatBar(HakimiIcons.Shader, "显存", "${stats.vramUsedMb} / ${stats.vramTotalMb} MB", stats.vramUsedMb.toFloat() / stats.vramTotalMb, HakimiColors.Pink)
-                    StatBar(HakimiIcons.Disk, "磁盘 IO", "读 %.0f · 写 %.0f MB/s".format(stats.diskReadMbps, stats.diskWriteMbps), ((stats.diskReadMbps + stats.diskWriteMbps) / 200f).toFloat(), HakimiColors.Warning)
+                    StatBar(HakimiIcons.Cpu, "CPU", "${stats.cpuPercent}%", stats.cpuPercent / 100f, c.primary)
+                    StatBar(HakimiIcons.Memory, "内存", "%.1f / %.0f GB".format(stats.memUsedGb, stats.memTotalGb), (stats.memUsedGb / stats.memTotalGb).toFloat(), c.accent)
+                    StatBar(HakimiIcons.Shader, "显存", "${stats.vramUsedMb} / ${stats.vramTotalMb} MB", stats.vramUsedMb.toFloat() / stats.vramTotalMb, c.success)
+                    StatBar(HakimiIcons.Disk, "磁盘 IO", "读 %.0f · 写 %.0f MB/s".format(stats.diskReadMbps, stats.diskWriteMbps), ((stats.diskReadMbps + stats.diskWriteMbps) / 200f).toFloat(), c.warning)
                     StatBar(
                         HakimiIcons.Network,
                         "网络",
                         if (stats.networkOnline) "${stats.networkLatencyMs} ms 正常" else "离线",
-                        if (stats.networkOnline) (1f - (stats.networkLatencyMs / 200f).coerceIn(0f, 1f)) else 0f,
-                        if (stats.networkOnline) HakimiColors.Success else HakimiColors.Warning,
+                        if (stats.networkOnline) (1f - (stats.networkLatencyMs / 200f)).coerceIn(0f, 1f) else 0f,
+                        if (stats.networkOnline) c.success else c.error,
                     )
                 }
             }
@@ -109,13 +98,14 @@ fun HomeScreen(vm: LauncherViewModel) {
 }
 
 @Composable
-private fun InfoTile(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color) {
-    SoftCard(modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+private fun InfoTile(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: androidx.compose.ui.graphics.Color) {
+    val c = HakimiTheme.colors
+    HakimiCard(modifier = Modifier.fillMaxWidth(), contentPadding = 14.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(modifier = Modifier.size(36.dp), contentAlignment = Alignment.Center) { HakimiIcon(icon, null, color, size = 20.dp) }
             Column(modifier = Modifier.weight(1f)) {
-                Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                Text(value, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                HakimiText(label, style = HakimiTheme.type.caption, color = c.textMuted)
+                HakimiText(value, style = HakimiTheme.type.title)
             }
         }
     }

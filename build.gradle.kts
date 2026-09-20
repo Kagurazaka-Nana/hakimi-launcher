@@ -7,6 +7,8 @@ plugins {
     id("org.jetbrains.compose") version "1.12.0"
     jacoco
     id("org.sonarqube") version "7.5.0.8588"
+    // Roborazzi：Compose Desktop 截图测试（让测试产出可见 PNG）
+    id("io.github.takahirom.roborazzi") version "1.74.0"
 }
 
 group = "com.minecraft"
@@ -35,13 +37,11 @@ sourceSets {
 
 dependencies {
     implementation(compose.desktop.currentOs)
-    implementation(compose.material3)
+    // 图标资源（ImageVector 素材，非 Material 视觉层）
     implementation(compose.materialIconsExtended)
 
-    // Compose Unstyled：无样式可访问原语（弹窗/菜单/焦点/键盘）
+    // Compose Unstyled：无样式行为原语（按钮/焦点/键盘/弹窗），视觉由自建设计系统负责
     implementation("com.composables:composeunstyled:2.10.0")
-    // compose-fluent-ui：桌面 Fluent/Mica 质感（设置页、按钮）
-    implementation("io.github.compose-fluent:fluent:v0.1.0")
     // Coil 3：加载 mod/资源包 图标等网络图片
     implementation("io.coil-kt.coil3:coil-compose:3.6.3")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.6.3")
@@ -57,6 +57,14 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+
+    // Roborazzi 桌面截图测试（JUnit4 承载，经 vintage 引擎与现有 JUnit5 并存）
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose-desktop:1.74.0")
+    testImplementation("org.jetbrains.compose.ui:ui-test:1.12.0")
+    testImplementation("org.jetbrains.compose.ui:ui-test-junit4:1.12.0")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation(kotlin("test"))
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine")
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -75,12 +83,6 @@ compose.desktop {
 tasks.test {
     useJUnitPlatform()
     finalizedBy(tasks.jacocoTestReport)
-}
-
-// 让 run / test 等 JavaExec 任务始终使用 JDK 25 toolchain，而不是 Gradle daemon 的 JVM，
-// 否则可能因 daemon 运行在较低版本 JVM 上而抛 UnsupportedClassVersionError。
-tasks.withType<JavaExec>().configureEach {
-    javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
 }
 
 tasks.jacocoTestReport {
