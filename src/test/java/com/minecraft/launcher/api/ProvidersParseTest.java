@@ -3,11 +3,37 @@ package com.minecraft.launcher.api;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProvidersParseTest {
+
+    /** 记录请求 URL 并返回固定响应体的假 HTTP 层。 */
+    private static final class FakeFetcher implements HttpTextFetcher {
+        final String response;
+        final boolean boom;
+        String lastUrl;
+
+        FakeFetcher(String response) {
+            this(response, false);
+        }
+
+        FakeFetcher(String response, boolean boom) {
+            this.response = response;
+            this.boom = boom;
+        }
+
+        @Override
+        public String get(String url, Map<String, String> headers) {
+            lastUrl = url;
+            if (boom) {
+                throw new RuntimeException("network down");
+            }
+            return response;
+        }
+    }
 
     @Test
     void modrinthParsesHits() {
@@ -37,6 +63,16 @@ class ProvidersParseTest {
     }
 
     @Test
+    void modrinthSearchBuildsFacetedUrlAndParses() {
+        FakeFetcher fetcher = new FakeFetcher("{\"hits\":[{\"project_id\":\"p1\",\"title\":\"T\",\"downloads\":5,\"categories\":[],\"project_type\":\"mod\"}]}");
+        List<SearchResult> results = new ModrinthProvider(fetcher).search("sodium", "mod", 10);
+        assertEquals(1, results.size());
+        assertTrue(fetcher.lastUrl.startsWith("https://api.modrinth.com/v2/search"));
+        assertTrue(fetcher.lastUrl.contains("project_type%3Amod"));
+        assertTrue(fetcher.lastUrl.contains("query=sodium"));
+    }
+
+    @Test
     void curseforgeParsesData() {
         String json = """
             {
@@ -56,8 +92,16 @@ class ProvidersParseTest {
     }
 
     @Test
+    void curseforgeSearchUsesKeyAndClassId() {
+        FakeFetcher fetcher = new FakeFetcher("{\"data\":[{\"id\":9,\"name\":\"X\",\"summary\":\"\",\"downloadCount\":1,\"categories\":[]}]}");
+        List<SearchResult> results = new CurseForgeProvider(fetcher, "key123").search("jei", "modpack", 10);
+        assertEquals(1, results.size());
+        assertTrue(fetcher.lastUrl.contains("classId=4471"));
+        assertTrue(fetcher.lastUrl.contains("gameId=432"));
+    }
+
+    @Test
     void curseforgeWithoutKeyReturnsEmpty() {
-        // 无 API key 时 search 直接返回空，不发起网络请求
         assertTrue(new CurseForgeProvider(null, null).search("sodium", "mod", 10).isEmpty());
         assertTrue(new CurseForgeProvider(null, "  ").search("sodium", "mod", 10).isEmpty());
     }
@@ -77,5 +121,14 @@ class ProvidersParseTest {
         assertEquals("mcmod-3294", results.get(0).id());
         assertTrue(results.get(0).name().contains("Sodium"));
         assertEquals("mcmod", results.get(0).source());
+    }
+
+    @Test
+    void mcmodSearchParsesAndToleratesFailure() {
+        FakeFetcher ok = new FakeFetcher("<a href=\"https://www.mcmod.cn/class/7.html\">Foo</a>");
+        assertEquals(1, new McModProvider(ok).search("foo", "mod", 10).size());
+
+        FakeFetcher failing = new FakeFetcher("", true);
+        assertTrue(new McModProvider(failing).search("foo", "mod", 10).isEmpty());
     }
 }

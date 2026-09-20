@@ -33,8 +33,7 @@ public final class ResourceSearchService {
         if (providers.isEmpty()) {
             return merged;
         }
-        ExecutorService pool = Executors.newFixedThreadPool(Math.min(providers.size(), 8));
-        try {
+        try (ExecutorService pool = Executors.newFixedThreadPool(Math.min(providers.size(), 8))) {
             List<Future<List<SearchResult>>> futures = new ArrayList<>();
             for (ModProvider provider : providers) {
                 Callable<List<SearchResult>> task = () -> {
@@ -49,12 +48,13 @@ public final class ResourceSearchService {
             for (Future<List<SearchResult>> future : futures) {
                 try {
                     merged.addAll(future.get(30, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
                 } catch (Exception e) {
-                    // 单来源超时/失败：跳过
+                    // 单来源超时/失败：跳过，不影响其它来源
                 }
             }
-        } finally {
-            pool.shutdownNow();
         }
         return merged;
     }

@@ -66,8 +66,7 @@ public final class ParallelDownloader {
         }
 
         AtomicLong done = new AtomicLong(0);
-        ExecutorService pool = Executors.newFixedThreadPool(Math.min(parallelism, Math.max(1, chunks.size())));
-        try {
+        try (ExecutorService pool = Executors.newFixedThreadPool(Math.min(parallelism, Math.max(1, chunks.size())))) {
             List<Future<?>> futures = new ArrayList<>(chunks.size());
             for (int i = 0; i < chunks.size(); i++) {
                 long[] range = chunks.get(i);
@@ -93,8 +92,6 @@ public final class ParallelDownloader {
             } catch (IOException e) {
                 throw new DownloadException("合并分块失败", e);
             }
-        } finally {
-            pool.shutdownNow();
         }
 
         if (expectedDigest != null && !expectedDigest.isBlank()) {

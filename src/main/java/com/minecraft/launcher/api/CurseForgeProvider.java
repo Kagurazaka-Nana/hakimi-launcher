@@ -18,7 +18,7 @@ public final class CurseForgeProvider implements ModProvider {
     private static final int GAME_ID = 432;
     private static final String SOURCE = "curseforge";
 
-    private final HttpJsonClient http;
+    private final HttpTextFetcher http;
     private final String apiKey;
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -26,7 +26,7 @@ public final class CurseForgeProvider implements ModProvider {
         this(new HttpJsonClient(), System.getenv("CURSEFORGE_API_KEY"));
     }
 
-    public CurseForgeProvider(HttpJsonClient http, String apiKey) {
+    public CurseForgeProvider(HttpTextFetcher http, String apiKey) {
         this.http = http;
         this.apiKey = apiKey;
     }

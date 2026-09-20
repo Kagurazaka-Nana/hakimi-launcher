@@ -19,13 +19,13 @@ public final class McModProvider implements ModProvider {
             "<a[^>]+href=\"https?://www\\.mcmod\\.cn/class/(\\d+)\\.html\"[^>]*>([^<]+)</a>",
             Pattern.CASE_INSENSITIVE);
 
-    private final HttpJsonClient http;
+    private final HttpTextFetcher http;
 
     public McModProvider() {
         this(new HttpJsonClient());
     }
 
-    public McModProvider(HttpJsonClient http) {
+    public McModProvider(HttpTextFetcher http) {
         this.http = http;
     }
 

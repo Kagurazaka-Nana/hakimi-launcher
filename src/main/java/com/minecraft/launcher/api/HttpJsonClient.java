@@ -17,7 +17,7 @@ import java.util.Map;
  * 只读的 HTTP/JSON 客户端：所有请求前经 {@link UrlValidator} 做 SSRF 校验，
  * 仅允许 http/https 与公网地址。
  */
-public final class HttpJsonClient {
+public final class HttpJsonClient implements HttpTextFetcher {
 
     private final HttpClient client;
     private final String userAgent;
@@ -35,6 +35,7 @@ public final class HttpJsonClient {
     }
 
     /** GET 指定 URL，返回 UTF-8 响应体；非 2xx 抛异常。 */
+    @Override
     public String get(String url, Map<String, String> headers) {
         URI uri = UrlValidator.validate(url);
         HttpRequest.Builder builder = HttpRequest.newBuilder(uri)

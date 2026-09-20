@@ -17,14 +17,14 @@ public final class ModrinthProvider implements ModProvider {
     private static final String BASE = "https://api.modrinth.com/v2/search";
     private static final String SOURCE = "modrinth";
 
-    private final HttpJsonClient http;
+    private final HttpTextFetcher http;
     private final ObjectMapper mapper = new ObjectMapper();
 
     public ModrinthProvider() {
         this(new HttpJsonClient());
     }
 
-    public ModrinthProvider(HttpJsonClient http) {
+    public ModrinthProvider(HttpTextFetcher http) {
         this.http = http;
     }
 
