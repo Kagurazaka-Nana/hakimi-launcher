@@ -23,20 +23,27 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** 启动台分组（过滤维度）。 */
+enum class LaunchpadGroup(val label: String) {
+    ALL("全部"),
+    RESOURCE("资源"),
+    TOOL("工具"),
+}
+
 /** 导航页面枚举。 */
-enum class LauncherPage(val label: String, val icon: ImageVector) {
-    HOME("首页", HakimiIcons.Home),
-    CREATE("创建实例", HakimiIcons.Create),
-    MODS("Mods", HakimiIcons.Mods),
-    RESOURCE_PACK("资源包", HakimiIcons.ResourcePack),
-    DATA_PACK("数据包", HakimiIcons.DataPack),
-    SHADER("光影", HakimiIcons.Shader),
-    MODPACK("整合包", HakimiIcons.Modpack),
-    PLUGIN("插件", HakimiIcons.Plugin),
-    SERVER("服务器", HakimiIcons.Server),
-    WIKI("Wiki", HakimiIcons.Wiki),
-    SCREENSHOTS("截图", HakimiIcons.Screenshot),
-    SKIN("皮肤选择", HakimiIcons.Skin),
+enum class LauncherPage(val label: String, val icon: ImageVector, val group: LaunchpadGroup) {
+    HOME("首页", HakimiIcons.Home, LaunchpadGroup.TOOL),
+    CREATE("创建实例", HakimiIcons.Create, LaunchpadGroup.TOOL),
+    MODS("Mods", HakimiIcons.Mods, LaunchpadGroup.RESOURCE),
+    RESOURCE_PACK("资源包", HakimiIcons.ResourcePack, LaunchpadGroup.RESOURCE),
+    DATA_PACK("数据包", HakimiIcons.DataPack, LaunchpadGroup.RESOURCE),
+    SHADER("光影", HakimiIcons.Shader, LaunchpadGroup.RESOURCE),
+    MODPACK("整合包", HakimiIcons.Modpack, LaunchpadGroup.RESOURCE),
+    PLUGIN("插件", HakimiIcons.Plugin, LaunchpadGroup.RESOURCE),
+    SERVER("服务器", HakimiIcons.Server, LaunchpadGroup.RESOURCE),
+    WIKI("Wiki", HakimiIcons.Wiki, LaunchpadGroup.TOOL),
+    SCREENSHOTS("截图", HakimiIcons.Screenshot, LaunchpadGroup.TOOL),
+    SKIN("皮肤选择", HakimiIcons.Skin, LaunchpadGroup.TOOL),
 }
 
 /** 列表排序方式。 */
@@ -50,7 +57,9 @@ enum class SortMode(val label: String) {
 data class UiState(
     val page: LauncherPage = LauncherPage.HOME,
     val darkTheme: Boolean = false,
-    val sidebarExpanded: Boolean = true,
+    val showLaunchpad: Boolean = false,
+    val launchpadQuery: String = "",
+    val launchpadFilter: LaunchpadGroup = LaunchpadGroup.ALL,
     val home: HomeSnapshot? = null,
     val systemStats: SystemStats? = null,
     val resources: Map<ResourceKind, List<ResourceItem>> = emptyMap(),
@@ -106,13 +115,34 @@ class LauncherViewModel(private val backend: LauncherBackend) {
 
     fun close() = scope.cancel()
 
-    fun selectPage(page: LauncherPage) = _state.update {
-        it.copy(page = page, query = "", category = "全部", detail = null)
+    // —— 标签 / 启动台 ——
+
+    fun openTab(page: LauncherPage) = _state.update {
+        it.copy(page = page, showLaunchpad = false, query = "", category = "全部", detail = null)
     }
+
+    fun toggleLaunchpad() = _state.update { it.copy(showLaunchpad = !it.showLaunchpad) }
+
+    fun closeLaunchpad() = _state.update { it.copy(showLaunchpad = false) }
+
+    fun setLaunchpadQuery(q: String) = _state.update { it.copy(launchpadQuery = q) }
+
+    fun setLaunchpadFilter(group: LaunchpadGroup) = _state.update { it.copy(launchpadFilter = group) }
+
+    /** 启动台里按分组与关键词过滤后的页面。 */
+    fun visibleLaunchpadTabs(): List<LauncherPage> {
+        val s = _state.value
+        return LauncherPage.entries.filter { page ->
+            (s.launchpadFilter == LaunchpadGroup.ALL || page.group == s.launchpadFilter) &&
+                (s.launchpadQuery.isBlank() || page.label.contains(s.launchpadQuery, ignoreCase = true))
+        }
+    }
+
+    // —— 主题 ——
 
     fun toggleTheme() = _state.update { it.copy(darkTheme = !it.darkTheme) }
 
-    fun toggleSidebar() = _state.update { it.copy(sidebarExpanded = !it.sidebarExpanded) }
+    // —— 列表页 ——
 
     fun setQuery(q: String) = _state.update { it.copy(query = q) }
 
