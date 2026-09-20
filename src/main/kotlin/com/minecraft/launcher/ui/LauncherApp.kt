@@ -69,10 +69,13 @@ fun LauncherApp(vm: LauncherViewModel) {
                 NavHost(vm = vm)
             }
 
-            // 2) 顶部悬浮标签栏
+            // 2) 顶部悬浮标签栏（仅显示已打开标签，可关闭）
             TopTabBar(
+                openTabs = state.openTabs,
                 selected = state.page,
-                onSelect = { vm.openTab(it) },
+                onSelect = { vm.selectTab(it) },
+                onClose = { vm.closeTab(it) },
+                onAdd = { vm.toggleLaunchpad() },
                 modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
             )
 
@@ -149,7 +152,14 @@ private fun NavHost(vm: LauncherViewModel) {
 }
 
 @Composable
-private fun TopTabBar(selected: LauncherPage, onSelect: (LauncherPage) -> Unit, modifier: Modifier = Modifier) {
+private fun TopTabBar(
+    openTabs: List<LauncherPage>,
+    selected: LauncherPage,
+    onSelect: (LauncherPage) -> Unit,
+    onClose: (LauncherPage) -> Unit,
+    onAdd: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     LazyRow(
         modifier = modifier
             .clip(RoundedCornerShape(999.dp))
@@ -158,21 +168,40 @@ private fun TopTabBar(selected: LauncherPage, onSelect: (LauncherPage) -> Unit, 
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        items(LauncherPage.entries.toList(), key = { it.name }) { page ->
+        items(openTabs, key = { it.name }) { page ->
             val active = page == selected
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(999.dp))
-                    .background(if (active) MaterialTheme.colorScheme.primary else Color.Transparent)
+                    .background(if (active) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.12f))
                     .clickable { onSelect(page) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                    .padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Icon(page.icon, contentDescription = page.label, tint = if (active) MaterialTheme.colorScheme.onPrimary else Color.White, modifier = Modifier.size(16.dp))
-                if (active) {
-                    Text(page.label, color = MaterialTheme.colorScheme.onPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(page.label, color = if (active) MaterialTheme.colorScheme.onPrimary else Color.White, fontSize = 13.sp, fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal)
+                Box(
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clip(CircleShape)
+                        .clickable { onClose(page) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(HakimiIcons.Close, contentDescription = "关闭标签", tint = if (active) MaterialTheme.colorScheme.onPrimary else Color.White, modifier = Modifier.size(12.dp))
                 }
+            }
+        }
+        item(key = "add-tab") {
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.12f))
+                    .clickable(onClick = onAdd),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(HakimiIcons.Create, contentDescription = "新建标签（打开启动台）", tint = Color.White, modifier = Modifier.size(16.dp))
             }
         }
     }

@@ -56,6 +56,7 @@ enum class SortMode(val label: String) {
 /** 全局 UI 状态快照。 */
 data class UiState(
     val page: LauncherPage = LauncherPage.HOME,
+    val openTabs: List<LauncherPage> = listOf(LauncherPage.HOME),
     val darkTheme: Boolean = false,
     val showLaunchpad: Boolean = false,
     val launchpadQuery: String = "",
@@ -117,8 +118,25 @@ class LauncherViewModel(private val backend: LauncherBackend) {
 
     // —— 标签 / 启动台 ——
 
+    /** 从启动台打开（或聚焦）一个标签页。 */
     fun openTab(page: LauncherPage) = _state.update {
-        it.copy(page = page, showLaunchpad = false, query = "", category = "全部", detail = null)
+        val tabs = if (it.openTabs.contains(page)) it.openTabs else it.openTabs + page
+        it.copy(page = page, openTabs = tabs, showLaunchpad = false, query = "", category = "全部", detail = null)
+    }
+
+    /** 点击已打开标签切换选中。 */
+    fun selectTab(page: LauncherPage) = _state.update {
+        if (it.openTabs.contains(page)) it.copy(page = page) else it
+    }
+
+    /** 关闭标签（保留至少一个）。 */
+    fun closeTab(page: LauncherPage) = _state.update { s ->
+        if (s.openTabs.size <= 1) s
+        else {
+            val tabs = s.openTabs - page
+            val selected = if (s.page == page) (tabs.firstOrNull() ?: LauncherPage.HOME) else s.page
+            s.copy(openTabs = tabs, page = selected)
+        }
     }
 
     fun toggleLaunchpad() = _state.update { it.copy(showLaunchpad = !it.showLaunchpad) }
@@ -166,7 +184,10 @@ class LauncherViewModel(private val backend: LauncherBackend) {
     fun createInstance(name: String, version: String, loader: String) {
         scope.launch {
             backend.createInstance(name, version, loader)
-            _state.update { it.copy(page = LauncherPage.HOME, message = "已创建实例：$name") }
+            _state.update {
+                val tabs = if (it.openTabs.contains(LauncherPage.HOME)) it.openTabs else it.openTabs + LauncherPage.HOME
+                it.copy(page = LauncherPage.HOME, openTabs = tabs, message = "已创建实例：$name")
+            }
         }
     }
 

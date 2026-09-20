@@ -35,6 +35,10 @@ fun main() = application {
                         vm.toggleLaunchpad()
                         true
                     }
+                    event.key == Key.W && combo -> {
+                        vm.closeTab(vm.state.value.page)
+                        true
+                    }
                     event.key == Key.Escape -> {
                         vm.closeLaunchpad()
                         false
