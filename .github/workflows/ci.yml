@@ -2,9 +2,9 @@ name: Simple Sonar CI
 
 on:
   push:
-    branches: [ "main", "dev" ]
+    branches: [ "main", "dev", "dev-kotlin" ]
   pull_request:
-    branches: [ "main", "dev" ]
+    branches: [ "main", "dev", "dev-kotlin" ]
 
 jobs:
   sonar-test:
@@ -16,24 +16,25 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up JDK 24
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
-          java-version: '24'
+          java-version: '25'
           distribution: 'temurin'
-          cache: 'maven'
+          cache: 'gradle'
 
-      - name: Grant execute permission for mvnw
-        run: chmod +x mvnw
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
 
       - name: Run Tests & Sonar Scan
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          ./mvnw verify sonar:sonar \
+          ./gradlew test jacocoTestReport sonar \
             -Dsonar.organization=kagurazaka-nana \
             -Dsonar.projectKey=Kagurazaka-Nana_hakimi-launcher \
             -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-
+            -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml \
+            -Dsonar.coverage.exclusions=src/main/kotlin/com/minecraft/launcher/ui/**,src/main/kotlin/com/minecraft/launcher/backend/StubLauncherBackend.kt,src/main/kotlin/com/minecraft/launcher/backend/HomeSnapshot.kt,src/main/kotlin/com/minecraft/launcher/backend/UiModels.kt,src/main/java/com/minecraft/launcher/download/HttpRangeFetcher.java,src/main/java/com/minecraft/launcher/api/HttpJsonClient.java \
+            -Dsonar.exclusions=docs/**,gradle/wrapper/gradle-wrapper.jar
