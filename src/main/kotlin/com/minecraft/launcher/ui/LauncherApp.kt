@@ -39,7 +39,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
@@ -191,7 +190,6 @@ private fun TopTabBar(
     val c = HakimiTheme.colors
     Row(
         modifier = modifier
-            .shadow(6.dp, HakimiTheme.shapes.pill)
             .clip(HakimiTheme.shapes.pill)
             .background(c.surface)
             .padding(horizontal = 6.dp, vertical = 5.dp),

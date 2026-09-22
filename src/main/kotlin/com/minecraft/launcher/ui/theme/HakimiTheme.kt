@@ -78,11 +78,10 @@ data class HakimiShapes(
     val pill: RoundedCornerShape = RoundedCornerShape(8.dp),
 )
 
-/** 像素贴纸几何：硬描边宽度 + 偏移阴影量。 */
+/** 像素贴纸几何：硬描边宽度。 */
 @Immutable
 data class HakimiMetrics(
     val stroke: Dp = 2.dp,
-    val shadow: Dp = 3.dp,
 )
 
 @Immutable
