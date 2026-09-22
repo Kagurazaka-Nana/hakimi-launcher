@@ -2,6 +2,9 @@ package com.minecraft.launcher.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -11,19 +14,24 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import com.minecraft.launcher.backend.SystemStats
 import com.minecraft.launcher.ui.HakimiIcons
 import com.minecraft.launcher.ui.theme.HakimiIcon
 import com.minecraft.launcher.ui.theme.HakimiText
 import com.minecraft.launcher.ui.theme.HakimiTheme
 
-/** 精简系统状态栏：图标 + 迷你进度条（有上限的指标）/ 上下行速率（网络、磁盘 IO）。 */
+/** 精简系统状态栏：图标 + 迷你进度条（有上限的指标）/ 上下行速率（网络、磁盘 IO）。图标悬浮显示含义。 */
 @Composable
 fun StatusBar(stats: SystemStats?, modifier: Modifier = Modifier) {
     val c = HakimiTheme.colors
@@ -37,26 +45,26 @@ fun StatusBar(stats: SystemStats?, modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        GaugeItem(HakimiIcons.Cpu, stats?.let { it.cpuPercent / 100f }, c.primary)
-        GaugeItem(HakimiIcons.Memory, stats?.let { (it.memUsedGb / it.memTotalGb).toFloat() }, c.success)
+        GaugeItem(HakimiIcons.Cpu, "CPU 占用", stats?.let { it.cpuPercent / 100f }, c.primary)
+        GaugeItem(HakimiIcons.Memory, "内存占用", stats?.let { (it.memUsedGb / it.memTotalGb).toFloat() }, c.success)
         val vramFraction = stats?.let { s ->
             val used = s.vramUsedMb
             val total = s.vramTotalMb
             if (used != null && total != null && total > 0) used.toFloat() / total else null
         }
         if (vramFraction != null) {
-            GaugeItem(HakimiIcons.Shader, vramFraction, c.accent)
+            GaugeItem(HakimiIcons.Shader, "显存占用", vramFraction, c.accent)
         }
-        RateItem(HakimiIcons.Network, stats?.netUpBps, stats?.netDownBps)
-        RateItem(HakimiIcons.Disk, stats?.diskWriteBps, stats?.diskReadBps)
+        RateItem(HakimiIcons.Network, "网络速度（↑上行 ↓下行）", stats?.netUpBps, stats?.netDownBps)
+        RateItem(HakimiIcons.Disk, "磁盘 IO（↑写入 ↓读取）", stats?.diskWriteBps, stats?.diskReadBps)
     }
 }
 
 @Composable
-private fun GaugeItem(icon: ImageVector, fraction: Float?, color: Color) {
+private fun GaugeItem(icon: ImageVector, tip: String, fraction: Float?, color: Color) {
     val c = HakimiTheme.colors
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        HakimiIcon(icon, null, c.textMuted, size = 14.dp)
+        HoverTip(label = tip) { HakimiIcon(icon, tip, c.textMuted, size = 14.dp) }
         Box(
             modifier = Modifier
                 .width(52.dp)
@@ -78,12 +86,40 @@ private fun GaugeItem(icon: ImageVector, fraction: Float?, color: Color) {
 }
 
 @Composable
-private fun RateItem(icon: ImageVector, upBps: Long?, downBps: Long?) {
+private fun RateItem(icon: ImageVector, tip: String, upBps: Long?, downBps: Long?) {
     val c = HakimiTheme.colors
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        HakimiIcon(icon, null, c.textMuted, size = 14.dp)
+        HoverTip(label = tip) { HakimiIcon(icon, tip, c.textMuted, size = 14.dp) }
         HakimiText("↑${formatRate(upBps)}", style = HakimiTheme.type.caption, color = c.text)
         HakimiText("↓${formatRate(downBps)}", style = HakimiTheme.type.caption, color = c.text)
+    }
+}
+
+/** 悬浮提示：鼠标悬停在内容上时，在其下方弹出说明气泡。 */
+@Composable
+private fun HoverTip(label: String, content: @Composable () -> Unit) {
+    val c = HakimiTheme.colors
+    val source = remember { MutableInteractionSource() }
+    val hovered by source.collectIsHoveredAsState()
+    Box(modifier = Modifier.hoverable(source)) {
+        content()
+        if (hovered) {
+            Popup(
+                alignment = Alignment.BottomCenter,
+                offset = IntOffset(0, 8),
+                properties = PopupProperties(focusable = false),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(c.surface)
+                        .border(2.dp, c.ink, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    HakimiText(label, style = HakimiTheme.type.caption, color = c.text)
+                }
+            }
+        }
     }
 }
 

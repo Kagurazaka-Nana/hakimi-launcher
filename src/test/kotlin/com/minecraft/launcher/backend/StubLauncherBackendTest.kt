@@ -1,6 +1,7 @@
 package com.minecraft.launcher.backend
 
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -37,6 +38,11 @@ class StubLauncherBackendTest {
         if (stats.vramUsedMb != null && stats.vramTotalMb != null) {
             assertTrue(stats.vramUsedMb <= stats.vramTotalMb)
         }
+    }
+
+    @Test
+    fun `downloadTasksFlow is empty in stub`() = runBlocking {
+        assertTrue(backend.downloadTasksFlow().toList().isEmpty())
     }
 
     @Test

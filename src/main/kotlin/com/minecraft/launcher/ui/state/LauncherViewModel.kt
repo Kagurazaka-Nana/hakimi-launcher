@@ -1,6 +1,7 @@
 package com.minecraft.launcher.ui.state
 
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.minecraft.launcher.backend.DownloadTask
 import com.minecraft.launcher.backend.GameVersion
 import com.minecraft.launcher.backend.HomeSnapshot
 import com.minecraft.launcher.backend.LauncherBackend
@@ -65,6 +66,7 @@ data class UiState(
     val launchpadFilter: LaunchpadGroup = LaunchpadGroup.ALL,
     val home: HomeSnapshot? = null,
     val systemStats: SystemStats? = null,
+    val downloads: List<DownloadTask> = emptyList(),
     val resources: Map<ResourceKind, List<ResourceItem>> = emptyMap(),
     val query: String = "",
     val category: String = "全部",
@@ -119,6 +121,12 @@ class LauncherViewModel(private val backend: LauncherBackend) {
         scope.launch {
             backend.systemStatsFlow().collect { stats ->
                 _state.update { it.copy(systemStats = stats) }
+            }
+        }
+        // 底部下载指示器：下载队列快照
+        scope.launch {
+            backend.downloadTasksFlow().collect { tasks ->
+                _state.update { it.copy(downloads = tasks) }
             }
         }
     }

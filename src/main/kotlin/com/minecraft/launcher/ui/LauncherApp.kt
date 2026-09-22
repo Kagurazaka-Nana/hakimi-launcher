@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -43,13 +44,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.composeunstyled.EscapeHandler
+import com.minecraft.launcher.backend.DownloadTask
 import com.minecraft.launcher.backend.ResourceKind
+import com.minecraft.launcher.backend.SystemStats
+import com.minecraft.launcher.ui.components.DownloadIndicator
 import com.minecraft.launcher.ui.components.ResourceDetailContent
 import com.minecraft.launcher.ui.components.StatusBar
 import com.minecraft.launcher.ui.state.LaunchpadGroup
 import com.minecraft.launcher.ui.state.LauncherPage
 import com.minecraft.launcher.ui.state.LauncherViewModel
-import com.minecraft.launcher.ui.theme.HakimiButton
 import com.minecraft.launcher.ui.theme.HakimiChip
 import com.minecraft.launcher.ui.theme.HakimiIcon
 import com.minecraft.launcher.ui.theme.HakimiIconButton
@@ -80,6 +83,7 @@ fun LauncherApp(vm: LauncherViewModel) {
                         NavHost(vm = vm)
                     }
                     if (!state.showLaunchpad) {
+                        LogoBadge(modifier = Modifier.align(Alignment.TopStart).padding(start = 24.dp, top = 24.dp))
                         TopTabBar(
                             openTabs = state.openTabs,
                             selected = state.page,
@@ -99,7 +103,7 @@ fun LauncherApp(vm: LauncherViewModel) {
                     }
                 }
                 // 独立底部栏：启动台按钮 + 页脚 + 系统状态栏（不与内容重叠）
-                BottomBar(onLaunchpad = { vm.toggleLaunchpad() }, stats = state.systemStats)
+                BottomBar(onLaunchpad = { vm.toggleLaunchpad() }, stats = state.systemStats, downloads = state.downloads)
             }
 
             // 启动台覆盖层（亚克力磨砂，背景不可见）
@@ -145,19 +149,42 @@ fun LauncherApp(vm: LauncherViewModel) {
     }
 }
 
-/** 底部栏：左下启动台按钮（带标签），右下页脚 + 系统状态栏。 */
+/** 左上角品牌位：Logo 占位符 + 应用名（与标签栏同一行）。 */
 @Composable
-private fun BottomBar(onLaunchpad: () -> Unit, stats: com.minecraft.launcher.backend.SystemStats?) {
+private fun LogoBadge(modifier: Modifier = Modifier) {
     val c = HakimiTheme.colors
     Row(
-        modifier = Modifier.fillMaxWidth().height(72.dp).padding(horizontal = 24.dp, vertical = 14.dp),
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        HakimiButton(text = "启动台", icon = HakimiIcons.Launchpad, onClick = onLaunchpad, filled = false)
-        Spacer(modifier = Modifier.weight(1f))
-        HakimiText("Hakimi Launcher · v0.1.0 ♥", style = HakimiTheme.type.caption, color = c.textMuted)
-        StatusBar(stats)
+        // Logo 占位符：后续替换为实际图像资源
+        Box(
+            modifier = Modifier
+                .size(26.dp)
+                .clip(RoundedCornerShape(7.dp))
+                .background(c.primarySoft)
+                .border(2.dp, c.ink, RoundedCornerShape(7.dp)),
+        )
+        HakimiText("Hakimi Launcher", style = HakimiTheme.type.title)
+    }
+}
+
+/** 底部栏：左下启动台（纯图标），正中间下载内容指示器，右下系统状态栏。 */
+@Composable
+private fun BottomBar(onLaunchpad: () -> Unit, stats: SystemStats?, downloads: List<DownloadTask>) {
+    Box(
+        modifier = Modifier.fillMaxWidth().height(72.dp).padding(horizontal = 24.dp, vertical = 14.dp),
+    ) {
+        HakimiIconButton(
+            icon = HakimiIcons.Launchpad,
+            contentDescription = "启动台",
+            onClick = onLaunchpad,
+            size = 44.dp,
+            modifier = Modifier.align(Alignment.CenterStart),
+        )
+        DownloadIndicator(downloads, modifier = Modifier.align(Alignment.Center))
+        StatusBar(stats, modifier = Modifier.align(Alignment.CenterEnd))
     }
 }
 
