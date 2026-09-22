@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import com.composeunstyled.EscapeHandler
 import com.minecraft.launcher.backend.ResourceKind
 import com.minecraft.launcher.ui.components.ResourceDetailContent
+import com.minecraft.launcher.ui.components.StatusBar
 import com.minecraft.launcher.ui.state.LaunchpadGroup
 import com.minecraft.launcher.ui.state.LauncherPage
 import com.minecraft.launcher.ui.state.LauncherViewModel
@@ -97,8 +98,8 @@ fun LauncherApp(vm: LauncherViewModel) {
                         )
                     }
                 }
-                // 独立底部栏：启动台按钮 + 页脚（不与内容重叠）
-                BottomBar(onLaunchpad = { vm.toggleLaunchpad() })
+                // 独立底部栏：启动台按钮 + 页脚 + 系统状态栏（不与内容重叠）
+                BottomBar(onLaunchpad = { vm.toggleLaunchpad() }, stats = state.systemStats)
             }
 
             // 启动台覆盖层（亚克力磨砂，背景不可见）
@@ -144,17 +145,19 @@ fun LauncherApp(vm: LauncherViewModel) {
     }
 }
 
-/** 底部栏：左下启动台按钮（带标签），右下页脚。 */
+/** 底部栏：左下启动台按钮（带标签），右下页脚 + 系统状态栏。 */
 @Composable
-private fun BottomBar(onLaunchpad: () -> Unit) {
+private fun BottomBar(onLaunchpad: () -> Unit, stats: com.minecraft.launcher.backend.SystemStats?) {
     val c = HakimiTheme.colors
     Row(
         modifier = Modifier.fillMaxWidth().height(72.dp).padding(horizontal = 24.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         HakimiButton(text = "启动台", icon = HakimiIcons.Launchpad, onClick = onLaunchpad, filled = false)
         Spacer(modifier = Modifier.weight(1f))
         HakimiText("Hakimi Launcher · v0.1.0 ♥", style = HakimiTheme.type.caption, color = c.textMuted)
+        StatusBar(stats)
     }
 }
 
