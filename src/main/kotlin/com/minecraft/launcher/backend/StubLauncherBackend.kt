@@ -1,8 +1,18 @@
 package com.minecraft.launcher.backend
 
+import com.minecraft.launcher.monitor.SystemMetricsMonitor
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+
 /**
  * 前端框架阶段的占位实现：不访问网络、不触碰文件系统，
  * 仅向 UI 提供稳定的演示数据。真实逻辑后续替换本实现。
+ *
+ * 例外：系统指标走 [SystemMetricsMonitor] 的真实采样（只读 OS 计数器），
+ * 以便首页状态栏展示实际负载。
  */
 class StubLauncherBackend : LauncherBackend {
 
@@ -31,17 +41,27 @@ class StubLauncherBackend : LauncherBackend {
         ),
     )
 
-    override suspend fun loadSystemStats(): SystemStats = SystemStats(
-        cpuPercent = 24,
-        memUsedGb = 5.2,
-        memTotalGb = 16.0,
-        vramUsedMb = 1800,
-        vramTotalMb = 8192,
-        diskReadMbps = 42.0,
-        diskWriteMbps = 18.0,
-        networkLatencyMs = 36,
-        networkOnline = true,
-    )
+    private val monitor = SystemMetricsMonitor()
+
+    override fun systemStatsFlow(): Flow<SystemStats> = flow {
+        while (true) {
+            val s = monitor.sample()
+            emit(
+                SystemStats(
+                    cpuPercent = s.cpuPercent(),
+                    memUsedGb = s.memUsedGb(),
+                    memTotalGb = s.memTotalGb(),
+                    vramUsedMb = s.vramUsedMb(),
+                    vramTotalMb = s.vramTotalMb(),
+                    netDownBps = s.netDownBps(),
+                    netUpBps = s.netUpBps(),
+                    diskReadBps = s.diskReadBps(),
+                    diskWriteBps = s.diskWriteBps(),
+                ),
+            )
+            delay(1_000)
+        }
+    }.flowOn(Dispatchers.IO)
 
     override suspend fun loadResources(kind: ResourceKind): List<ResourceItem> = when (kind) {
         ResourceKind.MODS -> listOf(

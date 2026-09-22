@@ -48,6 +48,8 @@ dependencies {
 
     implementation("com.fasterxml.jackson.core:jackson-databind:2.22.2")
     implementation("net.java.dev.jna:jna:5.19.1")
+    // OSHI：系统状态栏的真实指标采集（CPU / 内存 / 网卡 / 磁盘 IO 计数器）
+    implementation("com.github.oshi:oshi-core:6.6.6")
     implementation("org.slf4j:slf4j-api:2.0.18")
     implementation("ch.qos.logback:logback-classic:1.6.3")
 

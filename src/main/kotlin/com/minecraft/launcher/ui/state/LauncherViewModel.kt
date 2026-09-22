@@ -93,7 +93,6 @@ class LauncherViewModel(private val backend: LauncherBackend) {
     fun start() {
         scope.launch {
             val home = backend.loadHome()
-            val stats = backend.loadSystemStats()
             val resources = ResourceKind.entries.associateWith { backend.loadResources(it) }
             val versions = backend.loadVersions()
             val loaders = backend.loadLoaders()
@@ -105,7 +104,6 @@ class LauncherViewModel(private val backend: LauncherBackend) {
             _state.update {
                 it.copy(
                     home = home,
-                    systemStats = stats,
                     resources = resources,
                     versions = versions,
                     loaders = loaders,
@@ -115,6 +113,12 @@ class LauncherViewModel(private val backend: LauncherBackend) {
                     wiki = wiki,
                     settings = settings,
                 )
+            }
+        }
+        // 系统状态栏：每秒采样的真实指标流
+        scope.launch {
+            backend.systemStatsFlow().collect { stats ->
+                _state.update { it.copy(systemStats = stats) }
             }
         }
     }

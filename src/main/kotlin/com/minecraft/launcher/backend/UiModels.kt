@@ -25,17 +25,18 @@ data class ResourceItem(
     val enabled: Boolean = false,
 )
 
-/** 系统运行监控指标。 */
+/** 系统运行监控指标（真实采样；速率由相邻两次采样差值换算）。 */
 data class SystemStats(
     val cpuPercent: Int,
     val memUsedGb: Double,
     val memTotalGb: Double,
-    val vramUsedMb: Int,
-    val vramTotalMb: Int,
-    val diskReadMbps: Double,
-    val diskWriteMbps: Double,
-    val networkLatencyMs: Int,
-    val networkOnline: Boolean,
+    /** 显存占用 MB；null = 本机无可用查询接口（UI 隐藏该项）。 */
+    val vramUsedMb: Long? = null,
+    val vramTotalMb: Long? = null,
+    val netDownBps: Long = 0,
+    val netUpBps: Long = 0,
+    val diskReadBps: Long = 0,
+    val diskWriteBps: Long = 0,
 )
 
 /** 皮肤信息。 */
