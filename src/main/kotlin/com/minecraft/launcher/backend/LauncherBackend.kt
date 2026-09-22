@@ -14,6 +14,9 @@ interface LauncherBackend {
     /** 系统运行监控流：每秒一次真实采样（内存、显存、CPU、磁盘 IO、网络速率）。 */
     fun systemStatsFlow(): Flow<SystemStats>
 
+    /** 下载队列流：任务列表快照，无任务时为空列表（底部指示器据此展开/收起）。 */
+    fun downloadTasksFlow(): Flow<List<DownloadTask>>
+
     /** 指定分类的资源列表 */
     suspend fun loadResources(kind: ResourceKind): List<ResourceItem>
 

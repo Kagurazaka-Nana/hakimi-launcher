@@ -4,6 +4,7 @@ import com.minecraft.launcher.monitor.SystemMetricsMonitor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 
@@ -62,6 +63,8 @@ class StubLauncherBackend : LauncherBackend {
             delay(1_000)
         }
     }.flowOn(Dispatchers.IO)
+
+    override fun downloadTasksFlow(): Flow<List<DownloadTask>> = emptyFlow()
 
     override suspend fun loadResources(kind: ResourceKind): List<ResourceItem> = when (kind) {
         ResourceKind.MODS -> listOf(
