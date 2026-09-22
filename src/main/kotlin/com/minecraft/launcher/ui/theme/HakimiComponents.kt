@@ -47,17 +47,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.composeunstyled.UnstyledButton
 
-/** 像素贴纸底：偏移实心阴影 + 填充 + 硬描边（drawBehind，内容绘制在其上）。 */
+/** 像素贴纸底：填充 + 硬描边（drawBehind，内容绘制在其上）。 */
 fun Modifier.pixelSurface(
     fill: Color,
     border: Color,
-    shadow: Color,
     corner: Dp,
     stroke: Dp,
-    offset: Dp,
 ): Modifier = drawBehind {
     val cr = CornerRadius(corner.toPx(), corner.toPx())
-    drawRoundRect(color = shadow, topLeft = Offset(offset.toPx(), offset.toPx()), size = size, cornerRadius = cr)
     drawRoundRect(color = fill, size = size, cornerRadius = cr)
     drawRoundRect(color = border, size = size, cornerRadius = cr, style = Stroke(width = stroke.toPx()))
 }
@@ -116,8 +113,7 @@ fun HakimiCard(
     val clickableModifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
     Column(
         modifier = modifier
-            .padding(end = m.shadow, bottom = m.shadow)
-            .pixelSurface(background, c.ink, c.ink, corner, m.stroke, m.shadow)
+            .pixelSurface(background, c.ink, corner, m.stroke)
             .then(clickableModifier)
             .padding(contentPadding),
         content = content,
@@ -141,14 +137,11 @@ fun HakimiButton(
         Row(
             modifier = Modifier
                 .graphicsLayer { scaleX = scale; scaleY = scale }
-                .padding(end = m.shadow, bottom = m.shadow)
                 .pixelSurface(
                     fill = if (filled) c.primary else c.surface,
                     border = c.ink,
-                    shadow = c.ink,
                     corner = 10.dp,
                     stroke = m.stroke,
-                    offset = m.shadow,
                 )
                 .padding(horizontal = 22.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -180,8 +173,7 @@ fun HakimiIconButton(
             modifier = Modifier
                 .graphicsLayer { scaleX = scale; scaleY = scale }
                 .size(size)
-                .padding(end = 3.dp, bottom = 3.dp)
-                .pixelSurface(background, c.ink, c.ink, 8.dp, m.stroke, 3.dp),
+                .pixelSurface(background, c.ink, 8.dp, m.stroke),
             contentAlignment = Alignment.Center,
         ) {
             HakimiIcon(icon, contentDescription, tint, size = size * 0.45f)
@@ -204,14 +196,11 @@ fun HakimiTab(
         Row(
             modifier = Modifier
                 .height(36.dp)
-                .padding(end = 3.dp, bottom = 3.dp)
                 .pixelSurface(
                     fill = if (selected) c.primary else c.surface,
                     border = c.ink,
-                    shadow = c.ink,
                     corner = 8.dp,
                     stroke = m.stroke,
-                    offset = 3.dp,
                 )
                 .padding(start = 14.dp, end = if (onClose != null) 8.dp else 14.dp),
             verticalAlignment = Alignment.CenterVertically,
