@@ -1,5 +1,7 @@
 package com.minecraft.launcher.backend
 
+import kotlinx.coroutines.flow.Flow
+
 /**
  * 后端能力接口：UI 只依赖这里定义的操作，
  * 真实下载 / 登录 / 启动 / 扫描等实现后续接入，UI 不直接写业务细节。
@@ -9,8 +11,8 @@ interface LauncherBackend {
     /** 首页快照 */
     suspend fun loadHome(): HomeSnapshot
 
-    /** 系统运行监控（内存、显存、CPU、磁盘 IO、网络） */
-    suspend fun loadSystemStats(): SystemStats
+    /** 系统运行监控流：每秒一次真实采样（内存、显存、CPU、磁盘 IO、网络速率）。 */
+    fun systemStatsFlow(): Flow<SystemStats>
 
     /** 指定分类的资源列表 */
     suspend fun loadResources(kind: ResourceKind): List<ResourceItem>

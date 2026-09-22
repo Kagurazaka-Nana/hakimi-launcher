@@ -26,10 +26,11 @@ class ScreenshotTest {
     @Test
     fun homeLight() = runDesktopComposeUiTest {
         val vm = newVm()
+        // 先等真实指标流就绪再组合，保证首帧截图带数据（避免后台线程更新与测试帧时钟的竞态）
+        waitUntil(timeoutMillis = 10_000L) { vm.state.value.home != null && vm.state.value.systemStats != null }
         setContent {
             Box(modifier = Modifier.size(1200.dp, 760.dp)) { LauncherApp(vm) }
         }
-        waitUntil(timeoutMillis = 5_000L) { vm.state.value.home != null }
         waitForIdle()
         captureToImage().captureRoboImage("build/roborazzi/home-light.png")
         vm.close()
@@ -38,10 +39,10 @@ class ScreenshotTest {
     @Test
     fun homeDark() = runDesktopComposeUiTest {
         val vm = newVm()
+        waitUntil(timeoutMillis = 10_000L) { vm.state.value.home != null && vm.state.value.systemStats != null }
         setContent {
             Box(modifier = Modifier.size(1200.dp, 760.dp)) { LauncherApp(vm) }
         }
-        waitUntil(timeoutMillis = 5_000L) { vm.state.value.home != null }
         vm.toggleTheme()
         waitForIdle()
         captureToImage().captureRoboImage("build/roborazzi/home-dark.png")
@@ -51,10 +52,10 @@ class ScreenshotTest {
     @Test
     fun launchpadOpen() = runDesktopComposeUiTest {
         val vm = newVm()
+        waitUntil(timeoutMillis = 10_000L) { vm.state.value.home != null && vm.state.value.systemStats != null }
         setContent {
             Box(modifier = Modifier.size(1200.dp, 760.dp)) { LauncherApp(vm) }
         }
-        waitUntil(timeoutMillis = 5_000L) { vm.state.value.home != null }
         vm.toggleLaunchpad()
         waitForIdle()
         captureToImage().captureRoboImage("build/roborazzi/launchpad-open.png")

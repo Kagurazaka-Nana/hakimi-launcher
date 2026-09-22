@@ -5,10 +5,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,7 +25,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.minecraft.launcher.backend.RecentInstance
 import com.minecraft.launcher.ui.components.PageHeader
-import com.minecraft.launcher.ui.components.StatBar
 import com.minecraft.launcher.ui.theme.HakimiButton
 import com.minecraft.launcher.ui.theme.HakimiCard
 import com.minecraft.launcher.ui.theme.HakimiChip
@@ -54,13 +51,9 @@ fun HomeScreen(vm: LauncherViewModel) {
             subtitle = home?.welcomeSubtitle ?: "",
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
-        ) {
-            HeroCard(home, onLaunch = { vm.launch() }, modifier = Modifier.weight(2.1f).fillMaxHeight())
-            SystemStatusCard(stats, healthy = home?.systemHealthy ?: true, modifier = Modifier.width(320.dp).fillMaxHeight())
-        }
+        StatusBar(stats, modifier = Modifier.fillMaxWidth())
+
+        HeroCard(home, onLaunch = { vm.launch() }, modifier = Modifier.fillMaxWidth())
 
         if (home != null && home.recentInstances.isNotEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -123,27 +116,77 @@ private fun HeroCard(home: com.minecraft.launcher.backend.HomeSnapshot?, onLaunc
     }
 }
 
+/** 精简系统状态栏：图标 + 迷你进度条（有上限的指标）/ 上下行速率（网络、磁盘 IO）。 */
 @Composable
-private fun SystemStatusCard(stats: com.minecraft.launcher.backend.SystemStats?, healthy: Boolean, modifier: Modifier = Modifier) {
+private fun StatusBar(stats: com.minecraft.launcher.backend.SystemStats?, modifier: Modifier = Modifier) {
     val c = HakimiTheme.colors
-    HakimiCard(modifier = modifier, contentPadding = 24.dp) {
-        Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                HakimiIcon(HakimiIcons.Cpu, null, c.primary, size = 18.dp)
-                HakimiText("系统状态", style = HakimiTheme.type.title)
-            }
-            if (stats != null) {
-                StatBar(HakimiIcons.Cpu, "CPU", "${stats.cpuPercent}%", stats.cpuPercent / 100f, c.primary)
-                StatBar(HakimiIcons.Memory, "内存", "%.1f / %.0f GB".format(stats.memUsedGb, stats.memTotalGb), (stats.memUsedGb / stats.memTotalGb).toFloat(), c.success)
-                StatBar(HakimiIcons.Shader, "GPU", "%.1f / %.1f GB".format(stats.vramUsedMb / 1024.0, stats.vramTotalMb / 1024.0), stats.vramUsedMb.toFloat() / stats.vramTotalMb, c.accent)
-            }
-            Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(c.ink.copy(alpha = 0.12f)))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(modifier = Modifier.size(10.dp).clip(RoundedCornerShape(50)).background(if (healthy) c.success else c.error))
-                HakimiText(if (healthy) "系统健康" else "需要关注", style = HakimiTheme.type.label, color = c.textMuted)
+    Row(
+        modifier = modifier
+            .height(34.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(c.surface)
+            .border(2.dp, c.ink, RoundedCornerShape(10.dp))
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        GaugeItem(HakimiIcons.Cpu, stats?.let { it.cpuPercent / 100f }, c.primary)
+        GaugeItem(HakimiIcons.Memory, stats?.let { (it.memUsedGb / it.memTotalGb).toFloat() }, c.success)
+        val vramFraction = stats?.let { s ->
+            val used = s.vramUsedMb
+            val total = s.vramTotalMb
+            if (used != null && total != null && total > 0) used.toFloat() / total else null
+        }
+        if (vramFraction != null) {
+            GaugeItem(HakimiIcons.Shader, vramFraction, c.accent)
+        }
+        RateItem(HakimiIcons.Network, stats?.netUpBps, stats?.netDownBps)
+        RateItem(HakimiIcons.Disk, stats?.diskWriteBps, stats?.diskReadBps)
+    }
+}
+
+@Composable
+private fun GaugeItem(icon: androidx.compose.ui.graphics.vector.ImageVector, fraction: Float?, color: androidx.compose.ui.graphics.Color) {
+    val c = HakimiTheme.colors
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        HakimiIcon(icon, null, c.textMuted, size = 14.dp)
+        Box(
+            modifier = Modifier
+                .width(52.dp)
+                .height(8.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(c.surfaceMuted)
+                .border(2.dp, c.ink, RoundedCornerShape(3.dp)),
+        ) {
+            if (fraction != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(fraction.coerceIn(0f, 1f))
+                        .height(8.dp)
+                        .background(color),
+                )
             }
         }
     }
+}
+
+@Composable
+private fun RateItem(icon: androidx.compose.ui.graphics.vector.ImageVector, upBps: Long?, downBps: Long?) {
+    val c = HakimiTheme.colors
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        HakimiIcon(icon, null, c.textMuted, size = 14.dp)
+        HakimiText("↑${formatRate(upBps)}", style = HakimiTheme.type.caption, color = c.text)
+        HakimiText("↓${formatRate(downBps)}", style = HakimiTheme.type.caption, color = c.text)
+    }
+}
+
+/** 字节/秒 → 紧凑文本（B / K / M / G）。 */
+private fun formatRate(bps: Long?): String = when {
+    bps == null -> "-"
+    bps >= 1_000_000_000 -> "%.1fG".format(bps / 1_000_000_000.0)
+    bps >= 1_000_000 -> "%.1fM".format(bps / 1_000_000.0)
+    bps >= 1_000 -> "%.0fK".format(bps / 1_000.0)
+    else -> "${bps}B"
 }
 
 @Composable
