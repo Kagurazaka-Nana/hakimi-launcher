@@ -64,6 +64,12 @@ class BitDownloader(
         .version(HttpClient.Version.HTTP_2)
         .connectTimeout(config.connectTimeout)
         .followRedirects(HttpClient.Redirect.NORMAL)
+        .apply {
+            // 传输层代理（如本地 127.0.0.1:10808）；SSRF 校验针对最终请求 URL，不受影响
+            if (config.proxyHost != null) {
+                proxy(java.net.ProxySelector.of(java.net.InetSocketAddress(config.proxyHost, config.proxyPort)))
+            }
+        }
         .build()
 
     /**

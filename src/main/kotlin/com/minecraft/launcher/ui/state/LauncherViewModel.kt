@@ -217,6 +217,9 @@ class LauncherViewModel(private val backend: LauncherBackend) {
 
     fun consumeMessage() = _state.update { it.copy(message = null) }
 
+    /** 向消息条推送一条提示（2.2s 后自动消失）。 */
+    fun notifyMessage(msg: String) = _state.update { it.copy(message = msg) }
+
     // —— 下载事件 ——
 
     /** 发起下载：返回任务 id；进度经 [UiState.downloads] 流回状态栏。 */

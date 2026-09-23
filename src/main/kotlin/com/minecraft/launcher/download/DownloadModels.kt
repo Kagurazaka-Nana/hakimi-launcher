@@ -14,6 +14,9 @@ data class DownloadConfig(
     val bufferSize: Int = 256 shl 10,
     /** 限速（字节/秒），0 = 不限速。 */
     val maxBytesPerSec: Long = 0,
+    /** HTTP 代理（传输层）；null = 直连。SSRF 校验仍针对最终请求 URL。 */
+    val proxyHost: String? = null,
+    val proxyPort: Int = 0,
     val connectTimeout: Duration = Duration.ofSeconds(15),
     /** 片表元数据定时落盘间隔（不对每个网络块都写盘）。 */
     val metaFlushInterval: Duration = Duration.ofSeconds(2),
@@ -25,6 +28,7 @@ data class DownloadConfig(
         require(minSegmentSize > 0) { "minSegmentSize 必须为正" }
         require(bufferSize >= 8192) { "bufferSize 至少 8KB" }
         require(maxBytesPerSec >= 0) { "maxBytesPerSec 不能为负" }
+        require(proxyHost == null || proxyPort in 1..65535) { "设置代理时端口必须有效" }
     }
 }
 

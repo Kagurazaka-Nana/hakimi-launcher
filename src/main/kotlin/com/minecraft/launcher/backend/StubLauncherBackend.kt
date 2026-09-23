@@ -1,5 +1,7 @@
 package com.minecraft.launcher.backend
 
+import com.minecraft.launcher.download.BitFileDownloader
+import com.minecraft.launcher.download.DownloadConfig
 import com.minecraft.launcher.download.DownloadManager
 import com.minecraft.launcher.monitor.SystemMetricsMonitor
 import kotlinx.coroutines.Dispatchers
@@ -66,7 +68,12 @@ class StubLauncherBackend : LauncherBackend {
 
     override fun downloadTasksFlow(): Flow<List<DownloadTask>> = downloads.tasksFlow()
 
-    private val downloads = DownloadManager()
+    private val downloads = DownloadManager(
+        BitFileDownloader(
+            // 本机开发网络走 127.0.0.1:10808 代理；生产环境后续由设置页配置替换
+            DownloadConfig(proxyHost = "127.0.0.1", proxyPort = 10808),
+        ),
+    )
 
     override fun startDownload(url: String, into: java.nio.file.Path): String = downloads.start(url, into)
 
