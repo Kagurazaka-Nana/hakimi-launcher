@@ -67,6 +67,14 @@ class RealMojangSmokeTest {
             var objectPlan = assetService.planObjects(index, false);
             assertEquals(index.getObjects().size(), objectPlan.size(), "空目录应全量入计划");
             assertTrue(objectPlan.get(0).candidateUrls().get(0).startsWith("https://resources.download.minecraft.net/"));
+
+            // P4：真实 Java runtime 目录 → java-runtime-delta 平台清单计划
+            var runtimeService = new RuntimeService(provider, downloader,
+                    new GameLayout(dir.resolve("mc")), dir.resolve("runtime-cache"));
+            var runtimePlan = runtimeService.plan("java-runtime-delta",
+                    RuleContext.fromSystem().getOsName(), RuleContext.fromSystem().getArch());
+            assertTrue(runtimePlan.files().size() > 50, "JRE 文件数过少: " + runtimePlan.files().size());
+            assertTrue(runtimePlan.files().get(0).candidateUrls().get(0).startsWith("https://piston-data.mojang.com/"));
         } finally {
             downloader.close();
         }

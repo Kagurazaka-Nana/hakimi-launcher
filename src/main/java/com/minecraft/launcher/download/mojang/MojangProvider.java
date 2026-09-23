@@ -35,6 +35,11 @@ public final class MojangProvider implements DownloadProvider {
     }
 
     @Override
+    public List<String> getJavaRuntimeCatalogUrls() {
+        return List.of(JAVA_RUNTIME_CATALOG);
+    }
+
+    @Override
     public int getMaxConcurrency() {
         return 16;
     }

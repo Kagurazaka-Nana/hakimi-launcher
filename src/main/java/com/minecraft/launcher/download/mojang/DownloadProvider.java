@@ -27,6 +27,9 @@ public interface DownloadProvider {
      */
     List<String> injectURLCandidates(String baseURL);
 
+    /** Java runtime 目录（all.json）的候选 URL，按尝试顺序。 */
+    List<String> getJavaRuntimeCatalogUrls();
+
     /** 本源支持的最大并发（跨文件），供编排层限流。 */
     int getMaxConcurrency();
 }

@@ -25,6 +25,10 @@ public class JsonUtils {
         return MAPPER.readValue(file.toFile(), type);
     }
 
+    public static <T> T readValue(Path file, TypeReference<T> type) throws IOException {
+        return MAPPER.readValue(file.toFile(), type);
+    }
+
     public static String toPrettyJson(Object object) {
         if (object == null) {
             return "null";
