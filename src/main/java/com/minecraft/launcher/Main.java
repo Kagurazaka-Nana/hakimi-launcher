@@ -1,6 +1,8 @@
 package com.minecraft.launcher;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.minecraft.launcher.download.BitFileDownloader;
+import com.minecraft.launcher.download.FileDownloader;
 import com.minecraft.launcher.model.manifest.VersionInfo;
 import com.minecraft.launcher.model.manifest.VersionManifest;
 import org.slf4j.Logger;
@@ -31,8 +33,8 @@ public class Main {
             TEMP_DIR.resolve("version_manifest.json");
     private static final Logger logger =
             LoggerFactory.getLogger(Main.class.getName());
-    private static final HttpDownloader downloader =
-            new HttpDownloader();
+    private static final FileDownloader downloader =
+            new BitFileDownloader();
 
     public static void main(String[] args) throws Exception {
 
@@ -43,7 +45,7 @@ public class Main {
 
         logger.info("Start download and parse versions_manifest.json");
         Files.createDirectories(VERSIONS_MANIFEST_JSON_PATH.getParent());
-        downloader.downloadFile(VERSIONS_MANIFEST_URL, VERSIONS_MANIFEST_JSON_PATH);
+        downloader.downloadBlocking(VERSIONS_MANIFEST_URL, VERSIONS_MANIFEST_JSON_PATH);
         logger.info("Done.");
 
         ObjectMapper mapper = new ObjectMapper();
@@ -51,10 +53,10 @@ public class Main {
 
         logger.info("Start download client.json of the latest release");
         downloadLatestReleaseMeta(manifest);
-
+        downloader.close();
     }
 
-    private static void downloadLatestReleaseMeta(VersionManifest manifest) throws IOException, InterruptedException {
+    private static void downloadLatestReleaseMeta(VersionManifest manifest) throws IOException {
         VersionInfo latestRelease = manifest.getLatestRelease()
                 .orElseThrow(() -> new IllegalStateException("Manifest 中未找到最新 release 版本信息"));
 
@@ -62,7 +64,7 @@ public class Main {
         Path latestReleasePath = VERSIONS_DIR.resolve(id);
         Files.createDirectories(latestReleasePath);
         Path latestReleaseClientJsonPath = latestReleasePath.resolve(id + ".json");
-        downloader.downloadFile(latestRelease.getUrl(), latestReleaseClientJsonPath);
+        downloader.downloadBlocking(latestRelease.getUrl(), latestReleaseClientJsonPath);
     }
 }
 

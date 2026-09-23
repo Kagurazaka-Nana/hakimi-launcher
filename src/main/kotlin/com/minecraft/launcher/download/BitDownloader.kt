@@ -1,6 +1,7 @@
 package com.minecraft.launcher.download
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.Job
@@ -76,8 +77,20 @@ class BitDownloader(
             extraBufferCapacity = 32,
             onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST,
         )
-        val job = scope.launch { runDownload(uri, into, progress) }
-        return DownloadJob(job, progress.asSharedFlow().buffer(64), into)
+        val completion = CompletableDeferred<Unit>()
+        val job = scope.launch {
+            try {
+                runDownload(uri, into, progress)
+                completion.complete(Unit)
+            } catch (e: CancellationException) {
+                completion.cancel(e)
+                throw e
+            } catch (e: Exception) {
+                completion.completeExceptionally(e)
+                throw e
+            }
+        }
+        return DownloadJob(job, progress.asSharedFlow().buffer(64), into, completion)
     }
 
     // —— 对外任务句柄 ——
@@ -86,11 +99,15 @@ class BitDownloader(
         val job: Job,
         val progress: Flow<DownloadProgress>,
         val target: Path,
+        private val completion: CompletableDeferred<Unit>,
     ) {
         /** 暂停：取消协程但保留 .part 与片表，可对同 URL 再次 download 断点续传。 */
         fun cancel() = job.cancel()
 
         suspend fun join() = job.join()
+
+        /** 挂起直到下载结束；失败时抛出原始异常（取消时抛 [CancellationException]）。 */
+        suspend fun awaitCompletion() = completion.await()
 
         val isCompleted: Boolean get() = job.isCompleted
     }
