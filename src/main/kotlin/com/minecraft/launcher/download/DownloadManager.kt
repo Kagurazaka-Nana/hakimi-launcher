@@ -70,6 +70,49 @@ class DownloadManager(
         synchronized(lock) { jobs[id] }?.cancel()
     }
 
+    /**
+     * 外部编排任务句柄：安装这类「多文件聚合」操作没有单一下载任务可挂，
+     * 用本句柄把聚合进度推入同一队列（指示器/弹窗统一展示）。
+     */
+    class ExternalTask internal constructor(
+        val id: String,
+        private val onUpdate: (Float) -> Unit,
+        private val onTerminal: (DownloadState) -> Unit,
+    ) {
+        fun update(fraction: Float) = onUpdate(fraction)
+        fun complete() = onTerminal(DownloadState.COMPLETED)
+        fun fail() = onTerminal(DownloadState.FAILED)
+    }
+
+    /** 登记一个外部编排任务（初始为下载中），返回进度句柄。 */
+    fun trackExternal(name: String, url: String): ExternalTask {
+        val id = UUID.randomUUID().toString()
+        synchronized(lock) {
+            _tasks.value = (
+                listOf(DownloadTask(id, name, url, 0f, DownloadState.DOWNLOADING)) + _tasks.value
+                ).take(MAX_HISTORY)
+        }
+        return ExternalTask(
+            id,
+            onUpdate = { f ->
+                synchronized(lock) {
+                    _tasks.value = _tasks.value.map {
+                        if (it.id == id && it.state == DownloadState.DOWNLOADING) it.copy(fraction = f.coerceIn(0f, 1f)) else it
+                    }
+                }
+            },
+            onTerminal = { st ->
+                synchronized(lock) {
+                    _tasks.value = _tasks.value.map {
+                        if (it.id == id) {
+                            it.copy(state = st, fraction = if (st == DownloadState.COMPLETED) 1f else it.fraction)
+                        } else it
+                    }
+                }
+            },
+        )
+    }
+
     /** 切换传输层代理（host 为 null/空 表示直连）。 */
     fun setProxy(host: String?, port: Int) = downloader.setProxy(host, port)
 

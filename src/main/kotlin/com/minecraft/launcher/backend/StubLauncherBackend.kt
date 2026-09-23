@@ -3,6 +3,7 @@ package com.minecraft.launcher.backend
 import com.minecraft.launcher.download.BitFileDownloader
 import com.minecraft.launcher.download.DownloadConfig
 import com.minecraft.launcher.download.DownloadManager
+import com.minecraft.launcher.download.FileDownloader
 import com.minecraft.launcher.monitor.SystemMetricsMonitor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -66,12 +67,12 @@ class StubLauncherBackend : LauncherBackend {
         }
     }.flowOn(Dispatchers.IO)
 
-    private val downloads = DownloadManager(
-        BitFileDownloader(
-            // 本机开发默认代理 127.0.0.1:10808，可在设置页修改
-            DownloadConfig(proxyHost = "127.0.0.1", proxyPort = 10808),
-        ),
+    private val sharedDownloader: FileDownloader = BitFileDownloader(
+        // 本机开发默认代理 127.0.0.1:10808，可在设置页修改
+        DownloadConfig(proxyHost = "127.0.0.1", proxyPort = 10808),
     )
+
+    private val downloads = DownloadManager(sharedDownloader)
 
     @Volatile
     private var proxyEnabled = true
@@ -81,6 +82,42 @@ class StubLauncherBackend : LauncherBackend {
 
     @Volatile
     private var proxyPort = 10808
+
+    private val installGameDir: java.nio.file.Path = java.nio.file.Path.of("launcherTest", ".minecraft")
+    private val installCacheDir: java.nio.file.Path = java.nio.file.Path.of("temp", "install-cache")
+
+    private val installationService: com.minecraft.launcher.download.mojang.InstallationService by lazy {
+        val provider = com.minecraft.launcher.download.mojang.MojangProvider()
+        val layout = com.minecraft.launcher.download.mojang.GameLayout(installGameDir)
+        com.minecraft.launcher.download.mojang.InstallationService(
+            com.minecraft.launcher.download.mojang.ManifestService(
+                provider, sharedDownloader, installCacheDir.resolve("version_manifest_v2.json"),
+                java.time.Duration.ofHours(1),
+            ),
+            com.minecraft.launcher.download.mojang.VersionJsonService(
+                provider, sharedDownloader, installCacheDir.resolve("version-jsons"),
+            ),
+            provider,
+            sharedDownloader,
+            layout,
+            installCacheDir,
+        )
+    }
+
+    override fun startInstall(versionId: String) {
+        val task = downloads.trackExternal("安装 $versionId", "mojang://version/$versionId")
+        Thread.ofVirtual().start {
+            try {
+                installationService.install(versionId) { p ->
+                    val fraction = if (p.bytesTotal > 0) p.bytesDone.toFloat() / p.bytesTotal else 0f
+                    task.update(fraction)
+                }
+                task.complete()
+            } catch (e: Exception) {
+                task.fail()
+            }
+        }
+    }
 
     override fun downloadTasksFlow(): Flow<List<DownloadTask>> = downloads.tasksFlow()
 

@@ -26,6 +26,9 @@ interface LauncherBackend {
     /** 设置网络代理（传输层）：enabled=false 或 host 为空表示直连；仅影响后续新连接。 */
     fun setProxy(enabled: Boolean, host: String, port: Int)
 
+    /** 后台安装指定版本（manifest→JSON→game/assets/runtime 全链路），进度并入 downloadTasksFlow。 */
+    fun startInstall(versionId: String)
+
     /** 指定分类的资源列表 */
     suspend fun loadResources(kind: ResourceKind): List<ResourceItem>
 

@@ -128,6 +128,6 @@ class GameInstallerTest {
     }
 
     private static GameInstaller.Listener listener() {
-        return new GameInstaller.Listener() {};
+        return (entry, skipped) -> {};
     }
 }

@@ -25,6 +25,10 @@ final class StubFileDownloader implements FileDownloader {
         return hits.getOrDefault(url, 0);
     }
 
+    int totalHits() {
+        return hits.values().stream().mapToInt(Integer::intValue).sum();
+    }
+
     @Override
     public BitDownloader.DownloadJob download(String url, Path into) {
         throw new UnsupportedOperationException("测试替身仅提供同步下载");
