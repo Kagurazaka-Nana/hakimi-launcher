@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -44,6 +45,18 @@ class StubLauncherBackendTest {
     fun `downloadTasksFlow starts empty in stub`() = runBlocking {
         // StateFlow：取当前快照即可，不能用 toList（无限流）
         assertTrue(backend.downloadTasksFlow().first().isEmpty())
+    }
+
+    @Test
+    fun `setProxy reflects in settings snapshot`() = runBlocking {
+        backend.setProxy(false, "", 0)
+        val off = backend.loadSettings()
+        assertFalse(off.proxyEnabled)
+        backend.setProxy(true, "127.0.0.1", 10808)
+        val on = backend.loadSettings()
+        assertTrue(on.proxyEnabled)
+        assertEquals("127.0.0.1", on.proxyHost)
+        assertEquals(10808, on.proxyPort)
     }
 
     @Test

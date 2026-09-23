@@ -48,6 +48,7 @@ import com.minecraft.launcher.backend.DownloadTask
 import com.minecraft.launcher.backend.ResourceKind
 import com.minecraft.launcher.backend.SystemStats
 import com.minecraft.launcher.ui.components.DownloadIndicator
+import com.minecraft.launcher.ui.components.DownloadTasksDialog
 import com.minecraft.launcher.ui.components.ResourceDetailContent
 import com.minecraft.launcher.ui.components.StatusBar
 import com.minecraft.launcher.ui.state.LaunchpadGroup
@@ -103,7 +104,7 @@ fun LauncherApp(vm: LauncherViewModel) {
                     }
                 }
                 // 独立底部栏：启动台按钮 + 页脚 + 系统状态栏（不与内容重叠）
-                BottomBar(onLaunchpad = { vm.toggleLaunchpad() }, stats = state.systemStats, downloads = state.downloads)
+                BottomBar(onLaunchpad = { vm.toggleLaunchpad() }, stats = state.systemStats, downloads = state.downloads, onDownloadsClick = { vm.toggleDownloadsDialog(true) })
             }
 
             // 启动台覆盖层（亚克力磨砂，背景不可见）
@@ -145,6 +146,15 @@ fun LauncherApp(vm: LauncherViewModel) {
                     vm.consumeMessage()
                 }
             }
+
+            // 下载任务弹窗（含历史）
+            if (state.showDownloadsDialog) {
+                DownloadTasksDialog(
+                    tasks = state.downloads,
+                    onCancel = { vm.cancelDownload(it) },
+                    onDismiss = { vm.toggleDownloadsDialog(false) },
+                )
+            }
         }
     }
 }
@@ -172,7 +182,7 @@ private fun LogoBadge(modifier: Modifier = Modifier) {
 
 /** 底部栏：左下启动台（纯图标），正中间下载内容指示器，右下系统状态栏。 */
 @Composable
-private fun BottomBar(onLaunchpad: () -> Unit, stats: SystemStats?, downloads: List<DownloadTask>) {
+private fun BottomBar(onLaunchpad: () -> Unit, stats: SystemStats?, downloads: List<DownloadTask>, onDownloadsClick: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxWidth().height(72.dp).padding(horizontal = 24.dp, vertical = 14.dp),
     ) {
@@ -183,7 +193,7 @@ private fun BottomBar(onLaunchpad: () -> Unit, stats: SystemStats?, downloads: L
             size = 44.dp,
             modifier = Modifier.align(Alignment.CenterStart),
         )
-        DownloadIndicator(downloads, modifier = Modifier.align(Alignment.Center))
+        DownloadIndicator(downloads, onClick = onDownloadsClick, modifier = Modifier.align(Alignment.Center))
         StatusBar(stats, modifier = Modifier.align(Alignment.CenterEnd))
     }
 }

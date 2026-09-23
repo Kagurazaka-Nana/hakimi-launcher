@@ -39,12 +39,14 @@ data class SystemStats(
     val diskWriteBps: Long = 0,
 )
 
-/** 下载队列中的单个任务（底部下载指示器展示用）。 */
+/** 下载队列中的单个任务（底部指示器与下载弹窗展示用；含历史）。 */
 data class DownloadTask(
     val id: String,
     val name: String,
+    val url: String,
     /** 0f..1f */
     val fraction: Float,
+    val state: com.minecraft.launcher.download.DownloadState,
 )
 
 /** 皮肤信息。 */
@@ -104,6 +106,10 @@ data class SettingsSnapshot(
     val debugMode: Boolean,
     val account: String,
     val privacy: String,
+    /** 网络代理（传输层）；host 为空或 enabled=false 表示直连。 */
+    val proxyEnabled: Boolean = false,
+    val proxyHost: String = "",
+    val proxyPort: Int = 0,
 )
 
 /** 首页快照。 */

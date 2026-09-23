@@ -18,11 +18,12 @@ interface FileDownloader : AutoCloseable {
     /** 异步下载：立即返回句柄，进度经 [BitDownloader.DownloadJob.progress] 消费，cancel 即暂停可续传。 */
     fun download(url: String, into: Path): BitDownloader.DownloadJob
 
-    /**
-     * 同步下载：阻塞当前线程直到完成，返回目标路径。
-     * 失败抛原始异常（IOException 等）；供 Java 侧（CLI/后端编排）直接调用。
-     */
+    /** 同步下载：阻塞当前线程直到完成，返回目标路径。
+     * 失败抛原始异常（IOException 等）；供 Java 侧（CLI/后端编排）直接调用。 */
     fun downloadBlocking(url: String, into: Path): Path
+
+    /** 切换传输层 HTTP 代理：host 为 null/空 表示直连；仅影响后续新连接。 */
+    fun setProxy(host: String?, port: Int)
 
     /** 释放底层协程作用域与连接资源。 */
     override fun close()
@@ -49,6 +50,8 @@ class BitFileDownloader(
         job.awaitCompletion()
         into
     }
+
+    override fun setProxy(host: String?, port: Int) = downloader.setProxy(host, port)
 
     override fun close() {
         scope.cancel()

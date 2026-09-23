@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -31,10 +32,12 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.minecraft.launcher.ui.components.AvatarCircle
 import com.minecraft.launcher.ui.components.PageHeader
+import com.minecraft.launcher.backend.SettingsSnapshot
 import com.minecraft.launcher.ui.theme.HakimiButton
 import com.minecraft.launcher.ui.theme.HakimiCard
 import com.minecraft.launcher.ui.theme.HakimiChip
 import com.minecraft.launcher.ui.theme.HakimiIcon
+import com.minecraft.launcher.ui.theme.HakimiSearchField
 import com.minecraft.launcher.ui.theme.HakimiText
 import com.minecraft.launcher.ui.theme.HakimiTheme
 import com.minecraft.launcher.ui.theme.HakimiToggle
@@ -70,6 +73,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 AppearanceCard(data?.theme ?: "", data?.language ?: "")
                 DownloadSourceCard(data?.downloadSource ?: "", data?.concurrency ?: 4, data?.concurrencyMin ?: 1, data?.concurrencyMax ?: 16)
+                NetworkProxyCard(vm, data)
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 JavaMemoryCard(data?.javaPath ?: "", data?.javaVersion ?: "", data?.maxMemoryMb ?: 4096, data?.memoryMinMb ?: 512, data?.memoryMaxMb ?: 8192)
@@ -163,6 +167,43 @@ private fun AccountPrivacyCard(account: String, privacy: String) {
             SectionTitle(HakimiIcons.Person, "账户与隐私")
             SettingLink("登录账户", account.ifBlank { "已登录：hakimi（离线模式）" })
             SettingLink("隐私设置", privacy.ifBlank { "不收集使用数据 · 仅本地存储" })
+        }
+    }
+}
+
+@Composable
+private fun NetworkProxyCard(vm: LauncherViewModel, settings: SettingsSnapshot?) {
+    val c = HakimiTheme.colors
+    var enabled by remember(settings?.proxyEnabled) { mutableStateOf(settings?.proxyEnabled ?: false) }
+    var host by remember(settings?.proxyHost) { mutableStateOf(settings?.proxyHost ?: "") }
+    var port by remember(settings?.proxyPort) { mutableStateOf((settings?.proxyPort ?: 0).toString()) }
+    fun apply() = vm.setProxy(enabled, host, port.toIntOrNull() ?: 0)
+    HakimiCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            SectionTitle(HakimiIcons.Network, "网络代理")
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.weight(1f)) {
+                    HakimiText("启用 HTTP 代理", style = HakimiTheme.type.label)
+                    HakimiText("下载请求经代理转发，仅影响新连接", style = HakimiTheme.type.caption, color = c.textMuted)
+                }
+                HakimiToggle(checked = enabled, onCheckedChange = { enabled = it; apply() })
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                HakimiSearchField(
+                    value = host,
+                    onValueChange = { host = it; apply() },
+                    placeholder = "代理地址，如 127.0.0.1",
+                    icon = HakimiIcons.Server,
+                    modifier = Modifier.weight(1f),
+                )
+                HakimiSearchField(
+                    value = port,
+                    onValueChange = { v -> port = v.filter(Char::isDigit).take(5); apply() },
+                    placeholder = "端口",
+                    icon = HakimiIcons.Plugin,
+                    modifier = Modifier.width(140.dp),
+                )
+            }
         }
     }
 }

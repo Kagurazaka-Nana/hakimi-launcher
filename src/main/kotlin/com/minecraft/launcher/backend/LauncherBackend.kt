@@ -23,6 +23,9 @@ interface LauncherBackend {
     /** 取消（暂停）下载任务：保留断点，可再次发起续传。 */
     fun cancelDownload(id: String)
 
+    /** 设置网络代理（传输层）：enabled=false 或 host 为空表示直连；仅影响后续新连接。 */
+    fun setProxy(enabled: Boolean, host: String, port: Int)
+
     /** 指定分类的资源列表 */
     suspend fun loadResources(kind: ResourceKind): List<ResourceItem>
 

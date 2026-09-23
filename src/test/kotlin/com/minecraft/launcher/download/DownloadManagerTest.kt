@@ -72,7 +72,7 @@ class DownloadManagerTest {
     private fun manager() = DownloadManager(BitFileDownloader(urlGuard = bypassGuard))
 
     @Test
-    fun `start enqueues task and removes it on completion`() = runBlocking {
+    fun `start enqueues task and marks completed in history`() = runBlocking {
         val data = ByteArray(1024 * 1024).also { Random(3).nextBytes(it) }
         val server = Server(data).start()
         val target = dir.resolve("ok.bin")
@@ -84,7 +84,8 @@ class DownloadManagerTest {
                 assertEquals(id, initial.first().id)
                 assertEquals("ok.bin", initial.first().name)
 
-                withTimeout(30_000) { dm.tasksFlow().first { it.isEmpty() } }
+                val done = withTimeout(30_000) { dm.tasksFlow().first { tasks -> tasks.any { it.id == id && it.state == DownloadState.COMPLETED } } }
+                assertEquals(1f, done.first { it.id == id }.fraction, 0.001f)
                 assertArrayEquals(data, Files.readAllBytes(target))
             }
         } finally {
@@ -102,7 +103,7 @@ class DownloadManagerTest {
                 dm.start(server.url, target)
                 val seen = mutableListOf<Float>()
                 withTimeout(30_000) {
-                    dm.tasksFlow().takeWhile { it.isNotEmpty() }.collect { tasks ->
+                    dm.tasksFlow().takeWhile { tasks -> tasks.any { it.state == DownloadState.CONNECTING || it.state == DownloadState.DOWNLOADING } }.collect { tasks ->
                         seen += tasks.first().fraction
                     }
                 }
@@ -115,7 +116,7 @@ class DownloadManagerTest {
     }
 
     @Test
-    fun `cancel removes task and keeps part file`() = runBlocking {
+    fun `cancel keeps history entry and part file`() = runBlocking {
         val data = ByteArray(8 * 1024 * 1024)
         val server = Server(data, chunkDelayMillis = 40).start()
         val target = dir.resolve("cancel.bin")
@@ -124,7 +125,7 @@ class DownloadManagerTest {
                 val id = dm.start(server.url, target)
                 withTimeout(5_000) { dm.tasksFlow().first { tasks -> tasks.any { it.id == id && it.fraction > 0f } } }
                 dm.cancel(id)
-                withTimeout(10_000) { dm.tasksFlow().first { it.isEmpty() } }
+                withTimeout(10_000) { dm.tasksFlow().first { tasks -> tasks.any { it.id == id && it.state == DownloadState.CANCELLED } } }
                 assertTrue(Files.exists(target.resolveSibling("cancel.bin.part")), "取消后应保留 .part")
             }
         } finally {
@@ -144,7 +145,7 @@ class DownloadManagerTest {
                 dm.start(sb.url, dir.resolve("b.bin"))
                 val both = withTimeout(5_000) { dm.tasksFlow().first { it.size >= 2 } }
                 assertEquals(setOf("a.bin", "b.bin"), both.map { it.name }.toSet())
-                withTimeout(30_000) { dm.tasksFlow().first { it.isEmpty() } }
+                withTimeout(30_000) { dm.tasksFlow().first { tasks -> tasks.size == 2 && tasks.all { it.state == DownloadState.COMPLETED } } }
                 assertArrayEquals(a, Files.readAllBytes(dir.resolve("a.bin")))
                 assertArrayEquals(b, Files.readAllBytes(dir.resolve("b.bin")))
             }

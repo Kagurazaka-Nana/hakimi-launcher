@@ -66,18 +66,34 @@ class StubLauncherBackend : LauncherBackend {
         }
     }.flowOn(Dispatchers.IO)
 
-    override fun downloadTasksFlow(): Flow<List<DownloadTask>> = downloads.tasksFlow()
-
     private val downloads = DownloadManager(
         BitFileDownloader(
-            // 本机开发网络走 127.0.0.1:10808 代理；生产环境后续由设置页配置替换
+            // 本机开发默认代理 127.0.0.1:10808，可在设置页修改
             DownloadConfig(proxyHost = "127.0.0.1", proxyPort = 10808),
         ),
     )
 
+    @Volatile
+    private var proxyEnabled = true
+
+    @Volatile
+    private var proxyHost = "127.0.0.1"
+
+    @Volatile
+    private var proxyPort = 10808
+
+    override fun downloadTasksFlow(): Flow<List<DownloadTask>> = downloads.tasksFlow()
+
     override fun startDownload(url: String, into: java.nio.file.Path): String = downloads.start(url, into)
 
     override fun cancelDownload(id: String) = downloads.cancel(id)
+
+    override fun setProxy(enabled: Boolean, host: String, port: Int) {
+        proxyEnabled = enabled
+        proxyHost = host
+        proxyPort = port
+        downloads.setProxy(if (enabled) host.ifBlank { null } else null, port)
+    }
 
     override suspend fun loadResources(kind: ResourceKind): List<ResourceItem> = when (kind) {
         ResourceKind.MODS -> listOf(
@@ -171,6 +187,9 @@ class StubLauncherBackend : LauncherBackend {
         debugMode = false,
         account = "已登录：hakimi（离线模式）",
         privacy = "不收集使用数据 · 仅本地存储",
+        proxyEnabled = proxyEnabled,
+        proxyHost = proxyHost,
+        proxyPort = proxyPort,
     )
 
     override suspend fun createInstance(name: String, version: String, loader: String) = Unit

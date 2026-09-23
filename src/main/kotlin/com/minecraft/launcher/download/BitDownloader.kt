@@ -60,17 +60,22 @@ class BitDownloader(
     private val urlGuard: (String) -> URI = UrlGuard::validate,
 ) {
 
+    /** 可变代理：运行时 setProxy 生效于后续新连接；SSRF 校验针对最终请求 URL，与代理无关。 */
+    private val proxySelector = VolatileProxySelector(
+        config.proxyHost?.let { java.net.InetSocketAddress(it, config.proxyPort) },
+    )
+
     private val http: HttpClient = HttpClient.newBuilder()
         .version(HttpClient.Version.HTTP_2)
         .connectTimeout(config.connectTimeout)
         .followRedirects(HttpClient.Redirect.NORMAL)
-        .apply {
-            // 传输层代理（如本地 127.0.0.1:10808）；SSRF 校验针对最终请求 URL，不受影响
-            if (config.proxyHost != null) {
-                proxy(java.net.ProxySelector.of(java.net.InetSocketAddress(config.proxyHost, config.proxyPort)))
-            }
-        }
+        .proxy(proxySelector)
         .build()
+
+    /** 切换传输层代理：host 为 null/空 表示直连。 */
+    fun setProxy(host: String?, port: Int) {
+        proxySelector.address = if (host.isNullOrBlank()) null else java.net.InetSocketAddress(host, port)
+    }
 
     /**
      * 发起下载：立即返回 [DownloadJob]；cancel 即暂停（保留 .part 可续传）。
@@ -293,6 +298,19 @@ class BitDownloader(
 
     private companion object {
         const val USER_AGENT = "HakimiLauncher/1.0 (JDK 25; BitDownloader)"
+    }
+
+    /** 读取可变地址的 HTTP 代理选择器。 */
+    private class VolatileProxySelector(initial: java.net.InetSocketAddress?) : java.net.ProxySelector() {
+        @Volatile
+        var address: java.net.InetSocketAddress? = initial
+
+        override fun select(uri: URI): MutableList<java.net.Proxy> =
+            mutableListOf(address?.let { java.net.Proxy(java.net.Proxy.Type.HTTP, it) } ?: java.net.Proxy.NO_PROXY)
+
+        override fun connectFailed(uri: URI, sa: java.net.SocketAddress, e: IOException) {
+            // 无备选代理列表，忽略
+        }
     }
 
     // —— 分片状态表 ——
