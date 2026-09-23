@@ -67,6 +67,7 @@ data class UiState(
     val home: HomeSnapshot? = null,
     val systemStats: SystemStats? = null,
     val downloads: List<DownloadTask> = emptyList(),
+    val showDownloadsDialog: Boolean = false,
     val resources: Map<ResourceKind, List<ResourceItem>> = emptyMap(),
     val query: String = "",
     val category: String = "全部",
@@ -226,6 +227,18 @@ class LauncherViewModel(private val backend: LauncherBackend) {
     fun startDownload(url: String, into: java.nio.file.Path): String = backend.startDownload(url, into)
 
     fun cancelDownload(id: String) = backend.cancelDownload(id)
+
+    /** 打开/关闭下载任务弹窗。 */
+    fun toggleDownloadsDialog(open: Boolean) = _state.update { it.copy(showDownloadsDialog = open) }
+
+    /** 设置网络代理并同步到设置页快照。 */
+    fun setProxy(enabled: Boolean, host: String, port: Int) {
+        backend.setProxy(enabled, host, port)
+        _state.update { s ->
+            val settings = s.settings ?: return@update s
+            s.copy(settings = settings.copy(proxyEnabled = enabled, proxyHost = host, proxyPort = port))
+        }
+    }
 
     /** 当前页面对应分类下、经搜索/筛选/排序后的可见资源。 */
     fun visibleResources(kind: ResourceKind): List<ResourceItem> {

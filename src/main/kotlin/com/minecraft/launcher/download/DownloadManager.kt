@@ -8,21 +8,27 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
 import java.nio.file.Path
 import java.util.UUID
 
 /**
- * 下载任务编排层：接收 UI 的下载事件（start/cancel），委托 [FileDownloader] 执行，
- * 并把每个任务的进度流汇总成单一 [tasksFlow]，供底部"下载内容"指示器消费。
+ * 下载任务编排层：接收 UI 的下载事件（start/cancel/setProxy），委托 [FileDownloader] 执行，
+ * 并把每个任务的进度流汇总成单一 [tasksFlow]，供底部指示器与下载弹窗消费。
  *
- * 任务在到达终态（完成/取消/失败）后自动移出队列；URL 的 SSRF 校验由下载器在
- * [start] 时同步执行（不合法直接抛 [SecurityException]，任务不会入队）。
+ * 任务到达终态（完成/取消/失败）后不再移除，而是标记状态作为历史保留（最多 [MAX_HISTORY] 条，
+ * 新任务在前）；指示器据此只统计活跃任务，弹窗展示全部。
+ * URL 的 SSRF 校验由下载器在 [start] 时同步执行（不合法直接抛 [SecurityException]，任务不入队）。
  */
 class DownloadManager(
     private val downloader: FileDownloader = BitFileDownloader(),
 ) : AutoCloseable {
+
+    private companion object {
+        const val MAX_HISTORY = 50
+    }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val lock = Any()
@@ -30,7 +36,7 @@ class DownloadManager(
 
     private val _tasks = MutableStateFlow<List<DownloadTask>>(emptyList())
 
-    /** 当前下载队列快照流（任务完成/取消/失败后自动移除）。 */
+    /** 当前下载任务列表快照流（活跃 + 历史，新任务在前）。 */
     fun tasksFlow(): StateFlow<List<DownloadTask>> = _tasks.asStateFlow()
 
     /** 发起下载事件：返回任务 id；URL 校验失败同步抛 [SecurityException]。 */
@@ -40,17 +46,21 @@ class DownloadManager(
         val name = into.fileName.toString()
         synchronized(lock) {
             jobs[id] = job
-            _tasks.value = _tasks.value + DownloadTask(id, name, 0f)
+            _tasks.value = (
+                listOf(DownloadTask(id, name, url, 0f, DownloadState.CONNECTING)) + _tasks.value
+                ).take(MAX_HISTORY)
         }
         scope.launch {
-            // SharedFlow 不会自行结束：收到终态即退出并移除任务
             job.progress
                 .takeWhile { it.state != DownloadState.COMPLETED && it.state != DownloadState.CANCELLED && it.state != DownloadState.FAILED }
                 .collect { p ->
                     val fraction = if (p.totalBytes > 0) (p.downloadedBytes.toFloat() / p.totalBytes).coerceIn(0f, 1f) else 0f
                     updateFraction(id, fraction)
                 }
-            remove(id)
+            // 终态：replay=1 的最后一个值即终态进度
+            val terminal = runCatching { job.progress.first() }.getOrNull()
+            val terminalFraction = terminal?.let { if (it.totalBytes > 0) (it.downloadedBytes.toFloat() / it.totalBytes).coerceIn(0f, 1f) else 0f } ?: 0f
+            markTerminal(id, terminal?.state ?: DownloadState.FAILED, terminalFraction)
         }
         return id
     }
@@ -60,17 +70,25 @@ class DownloadManager(
         synchronized(lock) { jobs[id] }?.cancel()
     }
 
+    /** 切换传输层代理（host 为 null/空 表示直连）。 */
+    fun setProxy(host: String?, port: Int) = downloader.setProxy(host, port)
+
     private fun updateFraction(id: String, fraction: Float) {
         synchronized(lock) {
-            if (!jobs.containsKey(id)) return
-            _tasks.value = _tasks.value.map { if (it.id == id) it.copy(fraction = fraction) else it }
+            _tasks.value = _tasks.value.map {
+                if (it.id == id && it.state == DownloadState.CONNECTING) it.copy(fraction = fraction, state = DownloadState.DOWNLOADING)
+                else if (it.id == id && it.state == DownloadState.DOWNLOADING) it.copy(fraction = fraction)
+                else it
+            }
         }
     }
 
-    private fun remove(id: String) {
+    private fun markTerminal(id: String, state: DownloadState, fraction: Float) {
         synchronized(lock) {
             jobs.remove(id)
-            _tasks.value = _tasks.value.filterNot { it.id == id }
+            _tasks.value = _tasks.value.map {
+                if (it.id == id) it.copy(state = state, fraction = if (state == DownloadState.COMPLETED) 1f else fraction) else it
+            }
         }
     }
 
