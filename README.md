@@ -29,15 +29,16 @@ hakimi-launcher/
 ├── gradlew / gradlew.bat                    # Gradle wrapper，构建入口喵
 ├── docs/                                    # 私有文档仓库子模块
 ├── src/main/java/com/minecraft/launcher/    # Java 后端核心
-│   ├── HttpDownloader.java                  # 抓取资源的猫爪下载器 🐾
-│   ├── Main.java                            # 旧 CLI/下载入口，暂时保留
+│   ├── Main.java                            # 旧 CLI/下载入口（走 FileDownloader）
 │   ├── model/manifest/                      # Mojang version_manifest.json 模型
 │   ├── model/version/                       # client version JSON 模型
 │   ├── model/rule/                          # Mojang rules 评估器
+│   ├── monitor/                             # OSHI 系统指标采样（CPU/内存/网络/磁盘）
 │   └── util/                                # JSON / 平台 / Windows 版本工具
-├── src/main/kotlin/com/minecraft/launcher/  # Kotlin 前端
+├── src/main/kotlin/com/minecraft/launcher/  # Kotlin 前端 + 后端契约
 │   ├── backend/                             # LauncherBackend + StubLauncherBackend
-│   └── ui/                                  # Compose Multiplatform Material 首页
+│   ├── download/                            # 猫爪下载器 🐾：FileDownloader 接口 + BitDownloader 分片引擎
+│   └── ui/                                  # Compose Multiplatform Material 界面
 └── temp/                                    # 偷偷藏 Manifest 缓存的小窝
 ```
 
