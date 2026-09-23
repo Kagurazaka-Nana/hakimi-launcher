@@ -1,11 +1,13 @@
 package com.minecraft.launcher.model.version.arguments.defaultuserjvm;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.minecraft.launcher.model.rule.Rule;
 import lombok.Getter;
 
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Getter
 public class DefaultUserJvm {
 
