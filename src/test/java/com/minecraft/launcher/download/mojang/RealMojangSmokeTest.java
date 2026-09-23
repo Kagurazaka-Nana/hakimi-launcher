@@ -59,6 +59,14 @@ class RealMojangSmokeTest {
                 assertTrue(libs.stream().anyMatch(d -> d.name().endsWith(":natives-windows")),
                         "Windows 平台应包含 natives-windows 构件");
             }
+
+            // P3：真实资源索引（1.21.1 → assets 17）下载 + sha1 校验 + 对象差集
+            var assetService = new AssetService(provider, downloader, new GameLayout(dir.resolve("mc")));
+            var index = assetService.loadIndex(resolved.meta().getAssetIndex());
+            assertTrue(index.getObjects().size() > 1000, "assets 17 应有上千对象: " + index.getObjects().size());
+            var objectPlan = assetService.planObjects(index, false);
+            assertEquals(index.getObjects().size(), objectPlan.size(), "空目录应全量入计划");
+            assertTrue(objectPlan.get(0).candidateUrls().get(0).startsWith("https://resources.download.minecraft.net/"));
         } finally {
             downloader.close();
         }

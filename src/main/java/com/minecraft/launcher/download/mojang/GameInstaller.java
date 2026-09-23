@@ -33,10 +33,22 @@ public final class GameInstaller {
 
     private final FileDownloader downloader;
     private final int maxParallel;
+    /** 可选中央缓存：命中直接硬链接，未命中先下到缓存再链接（多实例共享、重复安装零流量）。 */
+    private final CacheStore cache;
+    private final Path gameRoot;
 
     public GameInstaller(FileDownloader downloader, int maxParallel) {
+        this(downloader, maxParallel, null, null);
+    }
+
+    public GameInstaller(FileDownloader downloader, int maxParallel, CacheStore cache, Path gameRoot) {
         this.downloader = downloader;
         this.maxParallel = Math.max(1, maxParallel);
+        this.cache = cache;
+        this.gameRoot = gameRoot;
+        if ((cache == null) != (gameRoot == null)) {
+            throw new IllegalArgumentException("cache 与 gameRoot 必须同时提供或同时为空");
+        }
     }
 
     /**
@@ -96,6 +108,9 @@ public final class GameInstaller {
         if (Files.isRegularFile(target) && Checksums.matches(target, Checksums.MOJANG_DIGEST, entry.sha1())) {
             return true;
         }
+        if (cache != null) {
+            return downloadViaCache(entry, target);
+        }
         IOException last = null;
         for (String url : entry.candidateUrls()) {
             Path tmp = target.resolveSibling(target.getFileName() + ".part");
@@ -105,6 +120,33 @@ public final class GameInstaller {
                     throw new IOException("摘要不匹配: " + url);
                 }
                 Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
+                return false;
+            } catch (IOException | RuntimeException e) {
+                Files.deleteIfExists(tmp);
+                last = e instanceof IOException ioe ? ioe : new IOException(e);
+            }
+        }
+        throw new IOException("所有候选 URL 均失败: " + target, last);
+    }
+
+    /** 缓存路径：目标已坏/缺失 → 先查缓存（硬链接）→ 未命中则下到缓存临时文件、校验、收编、链接进游戏目录。 */
+    private boolean downloadViaCache(FileEntry entry, Path target) throws IOException {
+        String relative = gameRoot.relativize(target).toString().replace('\\', '/');
+        if (cache.contains(relative, entry.sha1())) {
+            cache.linkInto(relative, target);
+            return false;
+        }
+        IOException last = null;
+        for (String url : entry.candidateUrls()) {
+            Path tmp = cache.cacheFile(relative + ".part");
+            Files.createDirectories(tmp.toAbsolutePath().getParent());
+            try {
+                downloader.downloadBlocking(url, tmp);
+                if (!Checksums.matches(tmp, Checksums.MOJANG_DIGEST, entry.sha1())) {
+                    throw new IOException("摘要不匹配: " + url);
+                }
+                cache.ingest(relative, tmp);
+                cache.linkInto(relative, target);
                 return false;
             } catch (IOException | RuntimeException e) {
                 Files.deleteIfExists(tmp);
