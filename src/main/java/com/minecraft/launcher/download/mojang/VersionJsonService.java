@@ -89,7 +89,7 @@ public final class VersionJsonService {
             // 无 jar 字段：客户端 JAR 属于继承链根（原版）
             effectiveJar = chain.get(chain.size() - 1);
         }
-        return new ResolvedVersion(merged, effectiveJar, chain);
+        return new ResolvedVersion(merged, effectiveJar, chain, cacheDir.resolve(entry.getId() + ".json"));
     }
 
     private void download(String url, Path target) throws IOException {

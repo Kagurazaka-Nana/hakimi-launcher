@@ -11,6 +11,10 @@ public final class GameLayout {
         this.root = root;
     }
 
+    public Path getRoot() {
+        return root;
+    }
+
     public Path versionJar(String id) {
         return root.resolve("versions").resolve(id).resolve(id + ".jar");
     }

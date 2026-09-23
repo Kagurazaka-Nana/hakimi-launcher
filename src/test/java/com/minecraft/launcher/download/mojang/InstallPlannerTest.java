@@ -22,7 +22,7 @@ class InstallPlannerTest {
                 .clientVersion("1.21.1-fabric")
                 .downloads(new Downloads(new DownloadType("30c7", 26836906, "https://piston-data.mojang.com/v1/objects/30c7/client.jar"), null))
                 .build();
-        ResolvedVersion resolved = new ResolvedVersion(meta, "1.21.1", List.of("1.21.1-fabric", "1.21.1"));
+        ResolvedVersion resolved = new ResolvedVersion(meta, "1.21.1", List.of("1.21.1-fabric", "1.21.1"), dir.resolve("cache/1.21.1-fabric.json"));
         GameLayout layout = new GameLayout(dir);
         InstallPlanner planner = new InstallPlanner(new MojangProvider(), layout);
 

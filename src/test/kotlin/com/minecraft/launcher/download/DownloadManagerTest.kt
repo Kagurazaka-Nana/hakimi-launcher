@@ -163,4 +163,21 @@ class DownloadManagerTest {
         }
         assertTrue(runBlocking { dm.tasksFlow().value }.isEmpty())
     }
+
+    @Test
+    fun `trackExternal aggregates progress into same queue`() = runBlocking {
+        manager().use { dm ->
+            val task = dm.trackExternal("安装 9.9.9", "mojang://version/9.9.9")
+            assertEquals(1, dm.tasksFlow().value.size)
+            assertEquals("安装 9.9.9", dm.tasksFlow().value.first().name)
+
+            task.update(0.5f)
+            assertEquals(0.5f, dm.tasksFlow().value.first().fraction, 0.001f)
+
+            task.complete()
+            val done = dm.tasksFlow().value.first()
+            assertEquals(DownloadState.COMPLETED, done.state)
+            assertEquals(1f, done.fraction, 0.001f)
+        }
+    }
 }

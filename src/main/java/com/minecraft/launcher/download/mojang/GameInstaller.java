@@ -28,7 +28,7 @@ public final class GameInstaller {
 
     /** 进度回调（P5 接 DownloadManager 时使用）。 */
     public interface Listener {
-        default void onFile(FileEntry entry, boolean skipped) {}
+        void onFile(FileEntry entry, boolean skipped);
     }
 
     private final FileDownloader downloader;
@@ -53,9 +53,18 @@ public final class GameInstaller {
 
     /**
      * 安装：下载计划内全部文件，并把版本 JSON（source，VersionJsonService 已缓存校验过）
-     * 复制到 versions/&lt;id&gt;/&lt;id&gt;.json。
+     * 复制到 versions/&lt;id&gt;/&lt;id&gt;.json——版本 JSON 最后写入，作为"安装完成"的提交标记。
      */
     public Result install(InstallPlan plan, Path versionJsonSource, Listener listener) throws IOException {
+        Result r = installFiles(plan.files(), listener);
+        Path jsonTarget = plan.versionJsonTarget();
+        Files.createDirectories(jsonTarget.toAbsolutePath().getParent());
+        Files.copy(versionJsonSource, jsonTarget, StandardCopyOption.REPLACE_EXISTING);
+        return r;
+    }
+
+    /** 仅执行文件清单（分阶段编排用），不动版本 JSON。 */
+    public Result installFiles(List<FileEntry> files, Listener listener) throws IOException {
         AtomicInteger downloaded = new AtomicInteger();
         AtomicInteger skipped = new AtomicInteger();
         AtomicLong bytes = new AtomicLong();
@@ -63,7 +72,7 @@ public final class GameInstaller {
 
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
             List<Future<?>> futures = new ArrayList<>();
-            for (FileEntry entry : plan.files()) {
+            for (FileEntry entry : files) {
                 futures.add(executor.submit(() -> {
                     try {
                         permits.acquire();
@@ -89,11 +98,6 @@ public final class GameInstaller {
             }
             awaitAll(futures);
         }
-
-        // 版本 JSON 直接落盘（内容已在解析阶段校验过结构）
-        Path jsonTarget = plan.versionJsonTarget();
-        Files.createDirectories(jsonTarget.toAbsolutePath().getParent());
-        Files.copy(versionJsonSource, jsonTarget, StandardCopyOption.REPLACE_EXISTING);
 
         return new Result(downloaded.get(), skipped.get(), bytes.get());
     }
