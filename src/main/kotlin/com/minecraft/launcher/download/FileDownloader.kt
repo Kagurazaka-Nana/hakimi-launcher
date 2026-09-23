@@ -33,7 +33,7 @@ interface FileDownloader : AutoCloseable {
  * [FileDownloader] 的默认实现：委托 [BitDownloader]（虚拟线程 + 协程 + 动态分片）。
  * 自带作用域（IO 调度器），close 时取消全部在途下载。
  */
-class BitFileDownloader(
+class BitFileDownloader @JvmOverloads constructor(
     private val config: DownloadConfig = DownloadConfig(),
     /** SSRF 校验函数；测试注入本地回环服务器时替换为恒通过实现。 */
     urlGuard: (String) -> java.net.URI = UrlGuard::validate,

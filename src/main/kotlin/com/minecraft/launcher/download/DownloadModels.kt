@@ -3,7 +3,7 @@ package com.minecraft.launcher.download
 import java.time.Duration
 
 /** 下载器配置。 */
-data class DownloadConfig(
+data class DownloadConfig @JvmOverloads constructor(
     /** 单任务并发连接数：8~16 是甜点区，再多通常触发服务端限流。 */
     val connections: Int = 8,
     /** 分片最小体积（字节）：动态切分不会低于该值。 */
