@@ -41,6 +41,7 @@ data class SystemStats(
 
 /** 下载队列中的单个任务（底部下载指示器展示用）。 */
 data class DownloadTask(
+    val id: String,
     val name: String,
     /** 0f..1f */
     val fraction: Float,

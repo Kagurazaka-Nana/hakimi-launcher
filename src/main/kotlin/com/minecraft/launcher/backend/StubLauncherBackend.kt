@@ -1,10 +1,10 @@
 package com.minecraft.launcher.backend
 
+import com.minecraft.launcher.download.DownloadManager
 import com.minecraft.launcher.monitor.SystemMetricsMonitor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 
@@ -64,7 +64,13 @@ class StubLauncherBackend : LauncherBackend {
         }
     }.flowOn(Dispatchers.IO)
 
-    override fun downloadTasksFlow(): Flow<List<DownloadTask>> = emptyFlow()
+    override fun downloadTasksFlow(): Flow<List<DownloadTask>> = downloads.tasksFlow()
+
+    private val downloads = DownloadManager()
+
+    override fun startDownload(url: String, into: java.nio.file.Path): String = downloads.start(url, into)
+
+    override fun cancelDownload(id: String) = downloads.cancel(id)
 
     override suspend fun loadResources(kind: ResourceKind): List<ResourceItem> = when (kind) {
         ResourceKind.MODS -> listOf(

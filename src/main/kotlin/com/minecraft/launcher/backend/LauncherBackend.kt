@@ -17,6 +17,12 @@ interface LauncherBackend {
     /** 下载队列流：任务列表快照，无任务时为空列表（底部指示器据此展开/收起）。 */
     fun downloadTasksFlow(): Flow<List<DownloadTask>>
 
+    /** 发起下载事件：返回任务 id；URL 不合法（SSRF 校验失败）同步抛 [SecurityException]。 */
+    fun startDownload(url: String, into: java.nio.file.Path): String
+
+    /** 取消（暂停）下载任务：保留断点，可再次发起续传。 */
+    fun cancelDownload(id: String)
+
     /** 指定分类的资源列表 */
     suspend fun loadResources(kind: ResourceKind): List<ResourceItem>
 

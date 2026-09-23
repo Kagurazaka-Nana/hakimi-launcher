@@ -217,6 +217,13 @@ class LauncherViewModel(private val backend: LauncherBackend) {
 
     fun consumeMessage() = _state.update { it.copy(message = null) }
 
+    // —— 下载事件 ——
+
+    /** 发起下载：返回任务 id；进度经 [UiState.downloads] 流回状态栏。 */
+    fun startDownload(url: String, into: java.nio.file.Path): String = backend.startDownload(url, into)
+
+    fun cancelDownload(id: String) = backend.cancelDownload(id)
+
     /** 当前页面对应分类下、经搜索/筛选/排序后的可见资源。 */
     fun visibleResources(kind: ResourceKind): List<ResourceItem> {
         val s = _state.value
