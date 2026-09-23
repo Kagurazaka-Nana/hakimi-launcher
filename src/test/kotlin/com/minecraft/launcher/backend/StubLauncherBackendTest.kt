@@ -41,8 +41,9 @@ class StubLauncherBackendTest {
     }
 
     @Test
-    fun `downloadTasksFlow is empty in stub`() = runBlocking {
-        assertTrue(backend.downloadTasksFlow().toList().isEmpty())
+    fun `downloadTasksFlow starts empty in stub`() = runBlocking {
+        // StateFlow：取当前快照即可，不能用 toList（无限流）
+        assertTrue(backend.downloadTasksFlow().first().isEmpty())
     }
 
     @Test
