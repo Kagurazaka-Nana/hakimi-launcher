@@ -72,7 +72,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 AppearanceCard(data?.theme ?: "", data?.language ?: "")
-                DownloadSourceCard(data?.downloadSource ?: "", data?.concurrency ?: 4, data?.concurrencyMin ?: 1, data?.concurrencyMax ?: 16)
+                DownloadSourceCard(vm, data?.downloadSource ?: "official", data?.concurrency ?: 4, data?.concurrencyMin ?: 1, data?.concurrencyMax ?: 16)
                 NetworkProxyCard(vm, data)
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -121,15 +121,21 @@ private fun JavaMemoryCard(javaPath: String, javaVersion: String, maxMem: Int, m
 }
 
 @Composable
-private fun DownloadSourceCard(source: String, concurrency: Int, min: Int, max: Int) {
+private fun DownloadSourceCard(vm: LauncherViewModel, source: String, concurrency: Int, min: Int, max: Int) {
     val c = HakimiTheme.colors
     HakimiCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             SectionTitle(HakimiIcons.Download, "下载源")
             HakimiText("下载源地址", style = HakimiTheme.type.label)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ReadOnlyField(source.ifBlank { "官方源（推荐）" }, modifier = Modifier.weight(1f))
-                HakimiChip("连接正常", color = c.success, selected = true)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf("official" to "官方源", "bmclapi" to "BMCLAPI", "auto" to "自动切换").forEach { (key, label) ->
+                    HakimiChip(
+                        label,
+                        color = c.primary,
+                        selected = key == source,
+                        onClick = { vm.setDownloadSource(key) },
+                    )
+                }
             }
             HakimiText("并发下载数", style = HakimiTheme.type.label)
             HakimiSlider(initialValue = concurrency.toFloat(), valueRange = min.toFloat()..max.toFloat()) { v ->

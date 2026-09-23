@@ -60,6 +60,16 @@ class StubLauncherBackendTest {
     }
 
     @Test
+    fun `setDownloadSource validates and reflects in settings`() = runBlocking {
+        assertEquals("official", backend.loadSettings().downloadSource)
+        backend.setDownloadSource("bmclapi")
+        assertEquals("bmclapi", backend.loadSettings().downloadSource)
+        backend.setDownloadSource("auto")
+        assertEquals("auto", backend.loadSettings().downloadSource)
+        org.junit.jupiter.api.assertThrows<IllegalArgumentException> { backend.setDownloadSource("evil") }
+    }
+
+    @Test
     fun `loadResources returns items for every kind`() = runBlocking {
         ResourceKind.entries.forEach { kind ->
             val items = backend.loadResources(kind)

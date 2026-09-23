@@ -86,10 +86,31 @@ class StubLauncherBackend : LauncherBackend {
     private val installGameDir: java.nio.file.Path = java.nio.file.Path.of("launcherTest", ".minecraft")
     private val installCacheDir: java.nio.file.Path = java.nio.file.Path.of("temp", "install-cache")
 
-    private val installationService: com.minecraft.launcher.download.mojang.InstallationService by lazy {
-        val provider = com.minecraft.launcher.download.mojang.MojangProvider()
+    @Volatile
+    private var downloadSourceKey = "official"
+
+    private fun currentProvider(): com.minecraft.launcher.download.mojang.DownloadProvider =
+        when (downloadSourceKey) {
+            "bmclapi" -> com.minecraft.launcher.download.mojang.BmclApiProvider()
+            "auto" -> com.minecraft.launcher.download.mojang.AutoProvider(
+                listOf(
+                    com.minecraft.launcher.download.mojang.BmclApiProvider(),
+                    com.minecraft.launcher.download.mojang.MojangProvider(),
+                ),
+            )
+            else -> com.minecraft.launcher.download.mojang.MojangProvider()
+        }
+
+    override fun setDownloadSource(source: String) {
+        require(source in setOf("official", "bmclapi", "auto")) { "未知下载源: $source" }
+        downloadSourceKey = source
+    }
+
+    override fun startInstall(versionId: String) {
+        val task = downloads.trackExternal("安装 $versionId", "mojang://version/$versionId")
+        val provider = currentProvider()
         val layout = com.minecraft.launcher.download.mojang.GameLayout(installGameDir)
-        com.minecraft.launcher.download.mojang.InstallationService(
+        val service = com.minecraft.launcher.download.mojang.InstallationService(
             com.minecraft.launcher.download.mojang.ManifestService(
                 provider, sharedDownloader, installCacheDir.resolve("version_manifest_v2.json"),
                 java.time.Duration.ofHours(1),
@@ -102,13 +123,9 @@ class StubLauncherBackend : LauncherBackend {
             layout,
             installCacheDir,
         )
-    }
-
-    override fun startInstall(versionId: String) {
-        val task = downloads.trackExternal("安装 $versionId", "mojang://version/$versionId")
         Thread.ofVirtual().start {
             try {
-                installationService.install(versionId) { p ->
+                service.install(versionId) { p ->
                     val fraction = if (p.bytesTotal > 0) p.bytesDone.toFloat() / p.bytesTotal else 0f
                     task.update(fraction)
                 }
@@ -216,7 +233,7 @@ class StubLauncherBackend : LauncherBackend {
         maxMemoryMb = 4096,
         memoryMinMb = 512,
         memoryMaxMb = 8192,
-        downloadSource = "官方源（推荐）",
+        downloadSource = downloadSourceKey,
         concurrency = 4,
         concurrencyMin = 1,
         concurrencyMax = 16,

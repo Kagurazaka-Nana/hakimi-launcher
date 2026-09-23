@@ -240,6 +240,18 @@ class LauncherViewModel(private val backend: LauncherBackend) {
         }
     }
 
+    /** 切换下载源：official | bmclapi | auto。 */
+    fun setDownloadSource(source: String) {
+        backend.setDownloadSource(source)
+        _state.update { s ->
+            val settings = s.settings ?: return@update s
+            s.copy(settings = settings.copy(downloadSource = source))
+        }
+    }
+
+    /** 后台安装版本，进度并入下载队列（底部指示器/弹窗可见）。 */
+    fun startInstall(versionId: String) = backend.startInstall(versionId)
+
     /** 当前页面对应分类下、经搜索/筛选/排序后的可见资源。 */
     fun visibleResources(kind: ResourceKind): List<ResourceItem> {
         val s = _state.value
