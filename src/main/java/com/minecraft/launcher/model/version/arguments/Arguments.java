@@ -1,5 +1,6 @@
 package com.minecraft.launcher.model.version.arguments;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.minecraft.launcher.model.version.arguments.defaultuserjvm.DefaultUserJvm;
@@ -11,6 +12,7 @@ import lombok.Getter;
 
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Getter
 public class Arguments {
 
