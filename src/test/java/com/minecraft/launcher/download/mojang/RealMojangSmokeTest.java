@@ -32,8 +32,7 @@ class RealMojangSmokeTest {
     void resolves1211PlanAgainstRealEndpoints() throws Exception {
         assumeTrue(System.getenv("HAKIMI_SMOKE") != null, "设置 HAKIMI_SMOKE=1 才联网冒烟");
         FileDownloader downloader = new BitFileDownloader(
-                new DownloadConfig(8, 1L << 20, 4, 256 << 10, 0L, "127.0.0.1", 10808,
-                        Duration.ofSeconds(15), Duration.ofSeconds(2), Duration.ofMillis(300)));
+                DownloadConfig.builder().proxyHost("127.0.0.1").proxyPort(10808).build());
         try {
             MojangProvider provider = new MojangProvider();
             ManifestService manifestService = new ManifestService(provider, downloader, dir.resolve("manifest.json"), Duration.ofHours(1));

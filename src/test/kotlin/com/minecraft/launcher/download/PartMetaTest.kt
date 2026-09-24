@@ -15,13 +15,13 @@ class PartMetaTest {
     lateinit var dir: Path
 
     private fun sample() = PartMeta(
-        url = "https://example.com/a.zip",
-        total = 1024,
-        etag = "\"abc\"",
-        lastModified = "Mon, 22 Sep 2026 00:00:00 GMT",
-        segments = listOf(
-            PartMeta.SegmentRecord(0, 511, done = true, crc = 0x1234),
-            PartMeta.SegmentRecord(512, 1023, done = false),
+        "https://example.com/a.zip",
+        1024,
+        "\"abc\"",
+        "Mon, 22 Sep 2026 00:00:00 GMT",
+        listOf(
+            PartMeta.SegmentRecord(0, 511, true, 0x1234),
+            PartMeta.SegmentRecord(512, 1023, false, 0),
         ),
     )
 
@@ -32,7 +32,7 @@ class PartMetaTest {
         val loaded = PartMeta.read(file)!!
         assertEquals(sample(), loaded)
         assertEquals(listOf(Segment(512, 1023)), loaded.pendingSegments())
-        assertEquals(1, loaded.segments.count { it.done })
+        assertEquals(1, loaded.segments().count { it.done() })
     }
 
     @Test

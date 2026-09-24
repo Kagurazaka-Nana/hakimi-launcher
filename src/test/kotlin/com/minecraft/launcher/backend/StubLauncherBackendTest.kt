@@ -1,7 +1,7 @@
 package com.minecraft.launcher.backend
 
+import com.minecraft.launcher.ui.state.toFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -18,7 +18,7 @@ class StubLauncherBackendTest {
     private val backend = StubLauncherBackend()
 
     @Test
-    fun `loadHome returns populated snapshot`() = runBlocking {
+    fun `loadHome returns populated snapshot`() {
         val home = backend.loadHome()
         assertTrue(home.welcomeTitle.isNotBlank())
         assertEquals("HakimiCat", home.profileName)
@@ -28,8 +28,8 @@ class StubLauncherBackendTest {
     }
 
     @Test
-    fun `systemStatsFlow emits sane real snapshot`() = runBlocking {
-        val stats = backend.systemStatsFlow().first()
+    fun `systemStatsPublisher emits sane real snapshot`() = runBlocking {
+        val stats = backend.systemStatsPublisher().toFlow().first()
         assertTrue(stats.cpuPercent in 0..100)
         assertTrue(stats.memUsedGb <= stats.memTotalGb)
         assertTrue(stats.memTotalGb > 0)
@@ -42,13 +42,14 @@ class StubLauncherBackendTest {
     }
 
     @Test
-    fun `downloadTasksFlow starts empty in stub`() = runBlocking {
-        // StateFlow：取当前快照即可，不能用 toList（无限流）
-        assertTrue(backend.downloadTasksFlow().first().isEmpty())
+    fun `downloadTasksPublisher starts empty in stub`() = runBlocking {
+        // 快照流：取当前值即可（Publisher 无重放，等首个提交）
+        val tasks = backend.downloadTasksPublisher().toFlow().first()
+        assertTrue(tasks.isEmpty())
     }
 
     @Test
-    fun `setProxy reflects in settings snapshot`() = runBlocking {
+    fun `setProxy reflects in settings snapshot`() {
         backend.setProxy(false, "", 0)
         val off = backend.loadSettings()
         assertFalse(off.proxyEnabled)
@@ -60,7 +61,7 @@ class StubLauncherBackendTest {
     }
 
     @Test
-    fun `setDownloadSource validates and reflects in settings`() = runBlocking {
+    fun `setDownloadSource validates and reflects in settings`() {
         assertEquals("official", backend.loadSettings().downloadSource)
         backend.setDownloadSource("bmclapi")
         assertEquals("bmclapi", backend.loadSettings().downloadSource)
@@ -70,8 +71,8 @@ class StubLauncherBackendTest {
     }
 
     @Test
-    fun `loadResources returns items for every kind`() = runBlocking {
-        ResourceKind.entries.forEach { kind ->
+    fun `loadResources returns items for every kind`() {
+        ResourceKind.values().forEach { kind ->
             val items = backend.loadResources(kind)
             assertTrue(items.isNotEmpty(), "$kind should not be empty")
             assertTrue(items.all { it.name.isNotBlank() && it.version.isNotBlank() })
@@ -79,7 +80,7 @@ class StubLauncherBackendTest {
     }
 
     @Test
-    fun `loaders versions skins servers screenshots wiki populated`() = runBlocking {
+    fun `loaders versions skins servers screenshots wiki populated`() {
         assertTrue(backend.loadVersions().isNotEmpty())
         assertTrue(backend.loadLoaders().isNotEmpty())
         assertTrue(backend.loadSkins().any { it.selected })
@@ -89,7 +90,7 @@ class StubLauncherBackendTest {
     }
 
     @Test
-    fun `side-effect operations complete`() = runBlocking {
+    fun `side-effect operations complete`() {
         backend.createInstance("测试", "1.21.1", "fabric")
         backend.launch("测试")
     }

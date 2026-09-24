@@ -37,22 +37,12 @@ class StatusBarTest {
     @Test
     fun `vram gauge shown when available`() = renderAndCapture(
         "statusbar-vram-shown",
-        SystemStats(
-            cpuPercent = 42, memUsedGb = 8.0, memTotalGb = 16.0,
-            vramUsedMb = 1800, vramTotalMb = 8192,
-            netDownBps = 1_500_000, netUpBps = 29_000,
-            diskReadBps = 0, diskWriteBps = 858_000,
-        ),
+        SystemStats(42, 8.0, 16.0, 1800L, 8192L, 1_500_000, 29_000, 0, 858_000),
     )
 
     @Test
     fun `vram gauge hidden when unavailable`() = renderAndCapture(
         "statusbar-vram-hidden",
-        SystemStats(
-            cpuPercent = 42, memUsedGb = 8.0, memTotalGb = 16.0,
-            vramUsedMb = null, vramTotalMb = null,
-            netDownBps = 1_500_000, netUpBps = 29_000,
-            diskReadBps = 0, diskWriteBps = 858_000,
-        ),
+        SystemStats(42, 8.0, 16.0, null, null, 1_500_000, 29_000, 0, 858_000),
     )
 }

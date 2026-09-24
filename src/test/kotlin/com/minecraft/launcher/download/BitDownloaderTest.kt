@@ -1,33 +1,21 @@
 package com.minecraft.launcher.download
 
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
+import com.sun.net.httpserver.HttpExchange
+import com.sun.net.httpserver.HttpServer
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
-import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.Executors
-import java.util.zip.CRC32C
-import com.sun.net.httpserver.HttpExchange
-import com.sun.net.httpserver.HttpServer
+import kotlin.math.min
 import kotlin.random.Random
 
 class BitDownloaderTest {
@@ -35,15 +23,18 @@ class BitDownloaderTest {
     @TempDir
     lateinit var dir: Path
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val bypassGuard: (String) -> URI = { URI(it) }
 
-    /** 本地测试服务器恒通过 SSRF 校验（真实 guard 的拦截行为另有专门用例）。 */
-    private fun downloader(config: DownloadConfig = DownloadConfig()) =
-        BitDownloader(scope, config, urlGuard = { URI(it) })
+    private fun downloader(config: DownloadConfig = DownloadConfig.defaults()) =
+        BitDownloader(config, bypassGuard)
 
     // —— 本地 Range HTTP 服务器 ——
 
-    private class TestFileServer(private val data: ByteArray, private val etag: String, private val supportRanges: Boolean = true) {
+    private class TestFileServer(
+        private val data: ByteArray,
+        private val etag: String,
+        private val supportRanges: Boolean = true,
+    ) {
         val servedRangeStarts = mutableListOf<Long>()
         var chunkDelayMillis = 0L
         private var server: HttpServer? = null
@@ -76,13 +67,12 @@ class BitDownloaderTest {
                 val range = rangeHeader?.let { parseRange(it) }
                 if (range != null) {
                     if (!supportRanges) {
-                        // 不支持 Range：忽略头部，回完整 200
                         sendBody(ex, 200, 0L, (data.size - 1).toLong())
                         return
                     }
                     // 跳过 bytes=0-0 的能力探测请求，只记录真实分片取数
                     if (!(range.first == 0L && (range.second ?: 0L) == 0L)) {
-                        servedRangeStarts += range.first
+                        servedRangeStarts.add(range.first)
                     }
                     val end = range.second ?: (data.size - 1).toLong()
                     ex.responseHeaders.add("Content-Range", "bytes ${range.first}-$end/${data.size}")
@@ -117,7 +107,7 @@ class BitDownloaderTest {
             val chunk = 64 * 1024L
             var pos = start
             while (pos <= end) {
-                val n = minOf(chunk, end - pos + 1).toInt()
+                val n = min(chunk, end - pos + 1).toInt()
                 ex.responseBody.write(data, pos.toInt(), n)
                 pos += n
                 if (chunkDelayMillis > 0) Thread.sleep(chunkDelayMillis)
@@ -128,7 +118,7 @@ class BitDownloaderTest {
     private fun randomBytes(size: Int): ByteArray = ByteArray(size).also { Random(42).nextBytes(it) }
 
     private fun crcOf(data: ByteArray, from: Int, toInclusive: Int): Long {
-        val crc = CRC32C()
+        val crc = java.util.zip.CRC32C()
         crc.update(data, from, toInclusive - from + 1)
         return crc.value
     }
@@ -136,18 +126,17 @@ class BitDownloaderTest {
     // —— 用例 ——
 
     @Test
-    fun `multi-connection download completes with exact content`() = runBlocking {
+    fun `multi-connection download completes with exact content`() {
         val data = randomBytes(2 * 1024 * 1024)
         val server = TestFileServer(data, etag = "\"v1\"").start()
         try {
             val target = dir.resolve("file.bin")
             val job = downloader().download(server.url, target)
-            withTimeout(30_000) { job.join() }
-            // SharedFlow replay=1 保留最后一次发射；join 后必然是终态
-            val last = withTimeout(5_000) { job.progress.first() }
+            job.awaitCompletionWithin(30)
             assertArrayEquals(data, Files.readAllBytes(target))
             assertFalse(Files.exists(target.resolveSibling("file.bin.part")))
             assertFalse(Files.exists(target.resolveSibling("file.bin.part.meta")))
+            val last = job.lastProgress()
             assertEquals(DownloadState.COMPLETED, last.state)
             assertEquals(data.size.toLong(), last.totalBytes)
             assertEquals(data.size.toLong(), last.downloadedBytes)
@@ -157,13 +146,13 @@ class BitDownloaderTest {
     }
 
     @Test
-    fun `single stream fallback when server ignores ranges`() = runBlocking {
+    fun `single stream fallback when server ignores ranges`() {
         val data = randomBytes(512 * 1024)
         val server = TestFileServer(data, etag = "\"v1\"", supportRanges = false).start()
         try {
             val target = dir.resolve("single.bin")
             val job = downloader().download(server.url, target)
-            withTimeout(30_000) { job.join() }
+            job.awaitCompletionWithin(30)
             assertArrayEquals(data, Files.readAllBytes(target))
         } finally {
             server.stop()
@@ -171,7 +160,7 @@ class BitDownloaderTest {
     }
 
     @Test
-    fun `cancel keeps part then resume completes`() = runBlocking {
+    fun `cancel keeps part then resume completes`() {
         val data = randomBytes(4 * 1024 * 1024)
         val slow = TestFileServer(data, etag = "\"v1\"").apply { chunkDelayMillis = 120 }.start()
         val target = dir.resolve("resume.bin")
@@ -179,26 +168,22 @@ class BitDownloaderTest {
         val metaFile = target.resolveSibling("resume.bin.part.meta")
         try {
             val first = downloader().download(slow.url, target)
-            delay(600) // 让它下载一部分
+            // 等到确实开始传输再取消
+            awaitUntil(5_000) { first.lastProgress().state == DownloadState.DOWNLOADING }
             first.cancel()
-            withTimeout(10_000) { first.join() }
-            val listing = Files.newDirectoryStream(dir).use { stream ->
-                stream.joinToString { p -> p.fileName.toString() }
-            }
-            assertTrue(Files.exists(partFile), "取消后 .part 应保留; dir=[$listing]")
-            assertNotNull(
-                PartMeta.read(metaFile),
-                "取消后片表应保留; dir=[$listing], metaSize=${if (Files.exists(metaFile)) Files.size(metaFile) else -1}",
-            )
+            assertThrows(java.util.concurrent.CancellationException::class.java) { first.awaitCompletion() }
+            assertTrue(Files.exists(partFile), "取消后 .part 应保留")
+            assertNotNull(PartMeta.read(metaFile), "取消后片表应保留")
 
-            // 正常速度续传，最终内容一致
             val fast = TestFileServer(data, etag = "\"v1\"").start()
             try {
+                // 把片表 URL 改指 fast（同一资源另一镜像的语义），验证真实断点续传
+                val m = PartMeta.read(metaFile)!!
+                PartMeta(fast.url, m.total(), m.etag(), m.lastModified(), m.segments()).write(metaFile)
                 val second = downloader().download(fast.url, target)
-                withTimeout(30_000) { second.join() }
+                second.awaitCompletionWithin(30)
                 assertArrayEquals(data, Files.readAllBytes(target))
                 assertFalse(Files.exists(partFile))
-                // 续传不应从 0 重新下载整个文件：服务器看到的区间起点不全为 0
                 assertTrue(fast.servedRangeStarts.isNotEmpty())
             } finally {
                 fast.stop()
@@ -209,38 +194,32 @@ class BitDownloaderTest {
     }
 
     @Test
-    fun `resume with pre-crafted half-done part skips completed segment`() = runBlocking {
+    fun `resume with pre-crafted half-done part skips completed segment`() {
         val data = randomBytes(1024 * 1024)
         val half = data.size / 2
         val target = dir.resolve("crafted.bin")
         val partFile = target.resolveSibling("crafted.bin.part")
         val metaFile = target.resolveSibling("crafted.bin.part.meta")
         Files.write(partFile, data.copyOfRange(0, half))
-        PartMeta(
-            url = "http://127.0.0.1:1/file.bin", // 占位，稍后用真实 URL 覆盖
-            total = data.size.toLong(),
-            etag = "\"v1\"",
-            lastModified = null,
-            segments = listOf(
-                PartMeta.SegmentRecord(0, half - 1L, done = true, crc = crcOf(data, 0, half - 1)),
-                PartMeta.SegmentRecord(half.toLong(), (data.size - 1).toLong(), done = false),
-            ),
-        ).let { meta ->
-            meta.copy(url = meta.url).write(metaFile)
-        }
         val server = TestFileServer(data, etag = "\"v1\"").start()
         try {
-            // 服务器端口随机，重写片表里的 URL 以匹配
-            val rewritten = PartMeta.read(metaFile)!!.copy(url = server.url)
-            rewritten.write(metaFile)
+            PartMeta(
+                server.url,
+                data.size.toLong(),
+                "\"v1\"",
+                null,
+                listOf(
+                    PartMeta.SegmentRecord(0, half - 1L, true, crcOf(data, 0, half - 1)),
+                    PartMeta.SegmentRecord(half.toLong(), (data.size - 1).toLong(), false, 0),
+                ),
+            ).write(metaFile)
 
             val job = downloader().download(server.url, target)
-            withTimeout(30_000) { job.join() }
+            job.awaitCompletionWithin(30)
             assertArrayEquals(data, Files.readAllBytes(target))
-            // 已完成的前半不应再被请求
             assertTrue(
                 server.servedRangeStarts.isNotEmpty() && server.servedRangeStarts.all { it >= half },
-                "不应重复下载已完成分片: starts=${server.servedRangeStarts}, half=$half, url=${server.url}",
+                "不应重复下载已完成分片: starts=${server.servedRangeStarts}, half=$half",
             )
         } finally {
             server.stop()
@@ -248,24 +227,19 @@ class BitDownloaderTest {
     }
 
     @Test
-    fun `etag change forces fresh download`() = runBlocking {
+    fun `etag change forces fresh download`() {
         val data = randomBytes(256 * 1024)
         val target = dir.resolve("etag.bin")
         val metaFile = target.resolveSibling("etag.bin.part.meta")
-        // 片表记录旧 ETag，服务器新 ETag → 应整体重下
-        PartMeta(
-            url = "placeholder", total = data.size.toLong(), etag = "\"old\"",
-            lastModified = null,
-            segments = listOf(PartMeta.SegmentRecord(0, (data.size - 1).toLong(), done = false)),
-        ).write(metaFile)
         val server = TestFileServer(data, etag = "\"new\"").start()
         try {
-            val rewritten = PartMeta.read(metaFile)!!.copy(url = server.url)
-            rewritten.write(metaFile)
+            PartMeta(
+                server.url, data.size.toLong(), "\"old\"", null,
+                listOf(PartMeta.SegmentRecord(0, (data.size - 1).toLong(), false, 0)),
+            ).write(metaFile)
             val job = downloader().download(server.url, target)
-            withTimeout(30_000) { job.join() }
+            job.awaitCompletionWithin(30)
             assertArrayEquals(data, Files.readAllBytes(target))
-            // 重下后片表应被清理
             assertFalse(Files.exists(metaFile))
         } finally {
             server.stop()
@@ -274,50 +248,44 @@ class BitDownloaderTest {
 
     @Test
     fun `default guard rejects loopback url before any io`() {
-        val d = BitDownloader(scope) // 使用真实 UrlGuard
-        assertThrows<SecurityException> {
-            d.download("http://127.0.0.1:1/x", dir.resolve("x.bin"))
+        val d = BitDownloader(DownloadConfig.defaults()) // 真实 UrlGuard
+        assertThrows(SecurityException::class.java) {
+            d.download("http://127.0.0.1:9999/x", dir.resolve("x.bin"))
         }
-        assertThrows<SecurityException> {
+        assertThrows(SecurityException::class.java) {
             d.download("ftp://example.com/x", dir.resolve("x.bin"))
         }
     }
 
     @Test
-    fun `progress flow reports rate and completion`() = runBlocking {
+    fun `progress reports downloading then completed`() {
         val data = randomBytes(1024 * 1024)
         val server = TestFileServer(data, etag = "\"v1\"").apply { chunkDelayMillis = 30 }.start()
         try {
             val target = dir.resolve("progress.bin")
             val job = downloader().download(server.url, target)
-            val completedSignal = CompletableDeferred<DownloadProgress>()
-            val collector = scope.launch {
-                job.progress.collect {
-                    if (it.state == DownloadState.COMPLETED) completedSignal.complete(it)
-                }
-            }
-            withTimeout(30_000) { completedSignal.await() }
-            collector.cancel()
-            job.join()
+            awaitUntil(10_000) { job.lastProgress().state == DownloadState.DOWNLOADING }
+            job.awaitCompletionWithin(30)
+            assertEquals(DownloadState.COMPLETED, job.lastProgress().state)
+            assertArrayEquals(data, Files.readAllBytes(target))
         } finally {
             server.stop()
         }
     }
 
     @Test
-    fun `rate limiter slows real download`() = runBlocking {
+    fun `rate limiter slows real download`() {
         val data = randomBytes(600 * 1024)
         val server = TestFileServer(data, etag = "\"v1\"").start()
         try {
             val target = dir.resolve("limited.bin")
-            val config = DownloadConfig(maxBytesPerSec = 200 * 1024, connections = 2)
-            val job = downloader(config).download(server.url, target)
+            val config = DownloadConfig.builder().maxBytesPerSec(200L * 1024).connections(2).build()
             val start = System.nanoTime()
-            withTimeout(30_000) { job.join() }
+            downloader(config).download(server.url, target).awaitCompletionWithin(30)
             val elapsedSec = (System.nanoTime() - start) / 1e9
             assertArrayEquals(data, Files.readAllBytes(target))
             // 总量 600KB，桶容量 200KB → 理想 (600-200)/200 = 2s
-            assertTrue(elapsedSec > 1.0, "限速应生效，实际 ${"%.2f".format(elapsedSec)}s")
+            assertTrue(elapsedSec > 1.0, "限速应生效，实际 %.2fs".format(elapsedSec))
         } finally {
             server.stop()
         }
