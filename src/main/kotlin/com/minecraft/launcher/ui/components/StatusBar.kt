@@ -21,9 +21,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import com.minecraft.launcher.backend.SystemStats
 import com.minecraft.launcher.ui.HakimiIcons
@@ -41,9 +46,9 @@ fun StatusBar(stats: SystemStats?, modifier: Modifier = Modifier) {
             .clip(RoundedCornerShape(10.dp))
             .background(c.surface)
             .border(2.dp, c.ink, RoundedCornerShape(10.dp))
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(18.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         GaugeItem(HakimiIcons.Cpu, "CPU 占用", stats?.let { it.cpuPercent / 100f }, c.primary)
         GaugeItem(HakimiIcons.Memory, "内存占用", stats?.let { (it.memUsedGb / it.memTotalGb).toFloat() }, c.success)
@@ -63,11 +68,11 @@ fun StatusBar(stats: SystemStats?, modifier: Modifier = Modifier) {
 @Composable
 private fun GaugeItem(icon: ImageVector, tip: String, fraction: Float?, color: Color) {
     val c = HakimiTheme.colors
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        HoverTip(label = tip) { HakimiIcon(icon, tip, c.textMuted, size = 14.dp) }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        HoverTip(label = tip) { HakimiIcon(icon, tip, c.textMuted, size = 12.dp) }
         Box(
             modifier = Modifier
-                .width(52.dp)
+                .width(38.dp)
                 .height(8.dp)
                 .clip(RoundedCornerShape(3.dp))
                 .background(c.surfaceMuted)
@@ -88,10 +93,24 @@ private fun GaugeItem(icon: ImageVector, tip: String, fraction: Float?, color: C
 @Composable
 private fun RateItem(icon: ImageVector, tip: String, upBps: Long?, downBps: Long?) {
     val c = HakimiTheme.colors
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        HoverTip(label = tip) { HakimiIcon(icon, tip, c.textMuted, size = 14.dp) }
-        HakimiText("↑${formatRate(upBps)}", style = HakimiTheme.type.caption, color = c.text)
-        HakimiText("↓${formatRate(downBps)}", style = HakimiTheme.type.caption, color = c.text)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        HoverTip(label = tip) { HakimiIcon(icon, tip, c.textMuted, size = 12.dp) }
+        // 固定宽度 + 单行：宽度取实测值（formatRate 已改为整数格式，最长 "↑9999M" ≈ 44px），
+        // 避免速率数字位数变化时状态栏整体宽度抖动
+        HakimiText(
+            "↑${formatRate(upBps)}",
+            modifier = Modifier.width(46.dp),
+            style = HakimiTheme.type.caption,
+            color = c.text,
+            maxLines = 1,
+        )
+        HakimiText(
+            "↓${formatRate(downBps)}",
+            modifier = Modifier.width(46.dp),
+            style = HakimiTheme.type.caption,
+            color = c.text,
+            maxLines = 1,
+        )
     }
 }
 
@@ -101,12 +120,32 @@ private fun HoverTip(label: String, content: @Composable () -> Unit) {
     val c = HakimiTheme.colors
     val source = remember { MutableInteractionSource() }
     val hovered by source.collectIsHoveredAsState()
+    val density = LocalDensity.current
+    // 自定义定位：气泡始终在锚点下方（留出间隙），避免气泡窗口覆盖鼠标位置
+    // 导致 hover 反复进出（悬浮提示闪烁）。同时钳制在窗口范围内防止截断。
+    val tipPosition = remember(density) {
+        object : PopupPositionProvider {
+            override fun calculatePosition(
+                anchorBounds: IntRect,
+                windowSize: IntSize,
+                layoutDirection: LayoutDirection,
+                popupContentSize: IntSize,
+            ): IntOffset {
+                val gap = with(density) { 6.dp.roundToPx() }
+                val x = anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2
+                val y = anchorBounds.bottom + gap
+                return IntOffset(
+                    x.coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)),
+                    y.coerceAtMost((windowSize.height - popupContentSize.height).coerceAtLeast(0)),
+                )
+            }
+        }
+    }
     Box(modifier = Modifier.hoverable(source)) {
         content()
         if (hovered) {
             Popup(
-                alignment = Alignment.BottomCenter,
-                offset = IntOffset(0, 8),
+                popupPositionProvider = tipPosition,
                 properties = PopupProperties(focusable = false),
             ) {
                 Box(
@@ -123,11 +162,11 @@ private fun HoverTip(label: String, content: @Composable () -> Unit) {
     }
 }
 
-/** 字节/秒 → 紧凑文本（B / K / M / G）。 */
+/** 字节/秒 → 紧凑整数文本（B / K / M / G），无小数位以节省状态栏空间。 */
 private fun formatRate(bps: Long?): String = when {
     bps == null -> "-"
-    bps >= 1_000_000_000 -> "%.1fG".format(bps / 1_000_000_000.0)
-    bps >= 1_000_000 -> "%.1fM".format(bps / 1_000_000.0)
+    bps >= 1_000_000_000 -> "%.0fG".format(bps / 1_000_000_000.0)
+    bps >= 1_000_000 -> "%.0fM".format(bps / 1_000_000.0)
     bps >= 1_000 -> "%.0fK".format(bps / 1_000.0)
     else -> "${bps}B"
 }

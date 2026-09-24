@@ -96,7 +96,7 @@ class LauncherViewModel(private val backend: LauncherBackend) {
     fun start() {
         scope.launch {
             val home = backend.loadHome()
-            val resources = ResourceKind.entries.associateWith { backend.loadResources(it) }
+            val resources = ResourceKind.values().associateWith { backend.loadResources(it) }
             val versions = backend.loadVersions()
             val loaders = backend.loadLoaders()
             val skins = backend.loadSkins()
@@ -120,13 +120,13 @@ class LauncherViewModel(private val backend: LauncherBackend) {
         }
         // 系统状态栏：每秒采样的真实指标流
         scope.launch {
-            backend.systemStatsFlow().collect { stats ->
+            backend.systemStatsPublisher().toFlow().collect { stats ->
                 _state.update { it.copy(systemStats = stats) }
             }
         }
         // 底部下载指示器：下载队列快照
         scope.launch {
-            backend.downloadTasksFlow().collect { tasks ->
+            backend.downloadTasksPublisher().toFlow().collect { tasks ->
                 _state.update { it.copy(downloads = tasks) }
             }
         }
@@ -191,12 +191,14 @@ class LauncherViewModel(private val backend: LauncherBackend) {
     fun closeDetail() = _state.update { it.copy(detail = null) }
 
     fun toggleResource(kind: ResourceKind, id: String) = _state.update { state ->
-        val list = state.resources[kind].orEmpty().map { if (it.id == id) it.copy(enabled = !it.enabled) else it }
+        val list = state.resources[kind].orEmpty().map {
+            if (it.id == id) it.toBuilder().enabled(!it.enabled).build() else it
+        }
         state.copy(resources = state.resources + (kind to list))
     }
 
     fun selectSkin(id: String) = _state.update {
-        it.copy(skins = it.skins.map { s -> s.copy(selected = s.id == id) })
+        it.copy(skins = it.skins.map { s -> s.toBuilder().selected(s.id == id).build() })
     }
 
     fun createInstance(name: String, version: String, loader: String) {
@@ -236,7 +238,7 @@ class LauncherViewModel(private val backend: LauncherBackend) {
         backend.setProxy(enabled, host, port)
         _state.update { s ->
             val settings = s.settings ?: return@update s
-            s.copy(settings = settings.copy(proxyEnabled = enabled, proxyHost = host, proxyPort = port))
+            s.copy(settings = settings.toBuilder().proxyEnabled(enabled).proxyHost(host).proxyPort(port).build())
         }
     }
 
@@ -245,7 +247,7 @@ class LauncherViewModel(private val backend: LauncherBackend) {
         backend.setDownloadSource(source)
         _state.update { s ->
             val settings = s.settings ?: return@update s
-            s.copy(settings = settings.copy(downloadSource = source))
+            s.copy(settings = settings.toBuilder().downloadSource(source).build())
         }
     }
 

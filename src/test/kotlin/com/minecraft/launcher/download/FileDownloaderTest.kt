@@ -1,13 +1,9 @@
 package com.minecraft.launcher.download
 
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import com.sun.net.httpserver.HttpServer
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -16,11 +12,12 @@ import java.net.InetSocketAddress
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CancellationException
 import java.util.concurrent.Executors
 import kotlin.random.Random
 
 /**
- * FileDownloader 接口契约测试：阻塞/异步入口、失败传播、取消语义、SSRF 校验。
+ * FileDownloader 接口契约测试：阻塞/异步入口、失败传播、取消语义、SSRF 拦截。
  * 本地回环测试服务器通过注入恒通过 guard 绕过（真实拦截行为由 UrlGuardTest 覆盖）。
  */
 class FileDownloaderTest {
@@ -30,7 +27,7 @@ class FileDownloaderTest {
 
     private val bypassGuard: (String) -> URI = { URI(it) }
 
-    private class Server(private val data: ByteArray, private val status: Int = 200) {
+    private class Server(private val data: ByteArray, private val status: Int = 200, private val chunkDelayMillis: Long = 0) {
         var http: HttpServer? = null
         val url: String get() = "http://127.0.0.1:${http!!.address.port}/f.bin"
 
@@ -49,7 +46,13 @@ class FileDownloaderTest {
                         val end = parts.getOrNull(1)?.takeIf { e -> e.isNotEmpty() }?.toLong() ?: (data.size - 1).toLong()
                         it.responseHeaders.add("Content-Range", "bytes $start-$end/${data.size}")
                         it.sendResponseHeaders(206, end - start + 1)
-                        it.responseBody.write(data, start.toInt(), (end - start + 1).toInt())
+                        var pos = start
+                        while (pos <= end) {
+                            val n = minOf(65536L, end - pos + 1).toInt()
+                            it.responseBody.write(data, pos.toInt(), n)
+                            pos += n
+                            if (chunkDelayMillis > 0) Thread.sleep(chunkDelayMillis)
+                        }
                     } else {
                         it.responseHeaders.add("Accept-Ranges", "bytes")
                         it.sendResponseHeaders(200, data.size.toLong())
@@ -66,13 +69,16 @@ class FileDownloaderTest {
         fun stop() = http?.stop(0)
     }
 
+    private fun downloader(config: DownloadConfig = DownloadConfig.defaults()) =
+        BitFileDownloader(config, bypassGuard)
+
     @Test
     fun `downloadBlocking returns path and exact content`() {
         val data = ByteArray(1024 * 1024).also { Random(7).nextBytes(it) }
         val server = Server(data).start()
         val target = dir.resolve("f.bin")
         try {
-            BitFileDownloader(urlGuard = bypassGuard).use { dl ->
+            downloader().use { dl ->
                 val result = dl.downloadBlocking(server.url, target)
                 assertEquals(target, result)
                 assertArrayEquals(data, Files.readAllBytes(target))
@@ -86,7 +92,7 @@ class FileDownloaderTest {
     fun `downloadBlocking propagates server failure`() {
         val server = Server(ByteArray(0), status = 404).start()
         try {
-            BitFileDownloader(urlGuard = bypassGuard).use { dl ->
+            downloader().use { dl ->
                 assertThrows(Exception::class.java) {
                     dl.downloadBlocking(server.url, dir.resolve("missing.bin"))
                 }
@@ -108,34 +114,45 @@ class FileDownloaderTest {
     }
 
     @Test
-    fun `async job awaitCompletion and cancel semantics`() = runBlocking {
+    fun `async job awaitCompletion and cancel semantics`() {
         val data = ByteArray(2 * 1024 * 1024)
         val server = Server(data).start()
         val target = dir.resolve("async.bin")
         try {
-            BitFileDownloader(urlGuard = bypassGuard).use { dl ->
+            downloader().use { dl ->
                 val job = dl.download(server.url, target)
-                withTimeout(30_000) { job.awaitCompletion() }
+                job.awaitCompletionWithin(30)
                 assertArrayEquals(data, Files.readAllBytes(target))
 
                 // 取消：awaitCompletion 抛 CancellationException，.part 保留
                 val slowTarget = dir.resolve("slow.bin")
-                val slowServer = Server(ByteArray(8 * 1024 * 1024)).start()
+                val slowServer = Server(ByteArray(8 * 1024 * 1024), chunkDelayMillis = 60).start()
                 try {
                     val slowJob = dl.download(slowServer.url, slowTarget)
-                    val deferred = launch {
-                        runCatching { slowJob.awaitCompletion() }
-                    }
-                    delay(300)
+                    awaitUntil(10_000) { slowJob.lastProgress().state == DownloadState.DOWNLOADING }
                     slowJob.cancel()
-                    withTimeout(10_000) { deferred.join() }
+                    assertThrows(CancellationException::class.java) { slowJob.awaitCompletion() }
                     assertTrue(Files.exists(slowTarget.resolveSibling("slow.bin.part")))
-                    assertThrows(CancellationException::class.java) {
-                        runBlocking { slowJob.awaitCompletion() }
-                    }
                 } finally {
                     slowServer.stop()
                 }
+            }
+        } finally {
+            server.stop()
+        }
+    }
+
+    @Test
+    fun `progress flow reports completion`() {
+        val data = ByteArray(1024 * 1024)
+        val server = Server(data).start()
+        try {
+            downloader().use { dl ->
+                val target = dir.resolve("progress.bin")
+                val job = dl.download(server.url, target)
+                job.awaitCompletionWithin(30)
+                assertEquals(DownloadState.COMPLETED, job.lastProgress().state)
+                assertFalse(Files.exists(target.resolveSibling("progress.bin.part")))
             }
         } finally {
             server.stop()

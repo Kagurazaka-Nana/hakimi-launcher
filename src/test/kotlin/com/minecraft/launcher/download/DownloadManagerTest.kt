@@ -1,11 +1,6 @@
 package com.minecraft.launcher.download
 
 import com.sun.net.httpserver.HttpServer
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.takeWhile
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -21,7 +16,7 @@ import kotlin.math.min
 import kotlin.random.Random
 
 /**
- * DownloadManager 编排层测试：任务入队/进度映射/终态移除、取消保留断点、SSRF 拒绝不入队。
+ * DownloadManager 编排层测试：任务入队/进度映射/历史保留、取消保留断点、SSRF 拒绝不入队、外部任务聚合。
  * 本地回环服务器通过注入恒通过 guard 绕过（真实拦截由 UrlGuardTest 覆盖）。
  */
 class DownloadManagerTest {
@@ -48,7 +43,7 @@ class DownloadManagerTest {
                         it.sendResponseHeaders(206, end - start + 1)
                         var pos = start
                         while (pos <= end) {
-                            val n = min(65536L, end - pos + 1).toInt()
+                            val n = minOf(65536L, end - pos + 1).toInt()
                             it.responseBody.write(data, pos.toInt(), n)
                             pos += n
                             if (chunkDelayMillis > 0) Thread.sleep(chunkDelayMillis)
@@ -69,23 +64,23 @@ class DownloadManagerTest {
         fun stop() = http?.stop(0)
     }
 
-    private fun manager() = DownloadManager(BitFileDownloader(urlGuard = bypassGuard))
+    private fun manager() = DownloadManager(BitFileDownloader(DownloadConfig.defaults(), bypassGuard))
 
     @Test
-    fun `start enqueues task and marks completed in history`() = runBlocking {
+    fun `start enqueues task and marks completed in history`() {
         val data = ByteArray(1024 * 1024).also { Random(3).nextBytes(it) }
         val server = Server(data).start()
         val target = dir.resolve("ok.bin")
         try {
             manager().use { dm ->
                 val id = dm.start(server.url, target)
-                val initial = withTimeout(5_000) { dm.tasksFlow().first { it.isNotEmpty() } }
+                val initial = dm.snapshot()
                 assertEquals(1, initial.size)
-                assertEquals(id, initial.first().id)
-                assertEquals("ok.bin", initial.first().name)
+                assertEquals(id, initial.first().getId())
+                assertEquals("ok.bin", initial.first().getName())
 
-                val done = withTimeout(30_000) { dm.tasksFlow().first { tasks -> tasks.any { it.id == id && it.state == DownloadState.COMPLETED } } }
-                assertEquals(1f, done.first { it.id == id }.fraction, 0.001f)
+                awaitUntil { dm.snapshot().any { it.getId() == id && it.getState() == DownloadState.COMPLETED } }
+                assertEquals(1f, dm.snapshot().first { it.getId() == id }.getFraction(), 0.001f)
                 assertArrayEquals(data, Files.readAllBytes(target))
             }
         } finally {
@@ -94,20 +89,15 @@ class DownloadManagerTest {
     }
 
     @Test
-    fun `progress fraction increases during download`() = runBlocking {
+    fun `progress fraction increases during download`() {
         val data = ByteArray(4 * 1024 * 1024)
         val server = Server(data, chunkDelayMillis = 30).start()
         val target = dir.resolve("slow.bin")
         try {
             manager().use { dm ->
                 dm.start(server.url, target)
-                val seen = mutableListOf<Float>()
-                withTimeout(30_000) {
-                    dm.tasksFlow().takeWhile { tasks -> tasks.any { it.state == DownloadState.CONNECTING || it.state == DownloadState.DOWNLOADING } }.collect { tasks ->
-                        seen += tasks.first().fraction
-                    }
-                }
-                assertTrue(seen.any { it > 0f }, "进度应出现非零值: $seen")
+                awaitUntil(10_000) { dm.snapshot().firstOrNull()?.getFraction()?.let { it > 0f } == true }
+                awaitUntil { dm.snapshot().none { it.getState() == DownloadState.DOWNLOADING || it.getState() == DownloadState.CONNECTING } }
                 assertArrayEquals(data, Files.readAllBytes(target))
             }
         } finally {
@@ -116,16 +106,16 @@ class DownloadManagerTest {
     }
 
     @Test
-    fun `cancel keeps history entry and part file`() = runBlocking {
+    fun `cancel keeps history entry and part file`() {
         val data = ByteArray(8 * 1024 * 1024)
         val server = Server(data, chunkDelayMillis = 40).start()
         val target = dir.resolve("cancel.bin")
         try {
             manager().use { dm ->
                 val id = dm.start(server.url, target)
-                withTimeout(5_000) { dm.tasksFlow().first { tasks -> tasks.any { it.id == id && it.fraction > 0f } } }
+                awaitUntil(10_000) { dm.snapshot().any { it.getId() == id && it.getFraction() > 0f } }
                 dm.cancel(id)
-                withTimeout(10_000) { dm.tasksFlow().first { tasks -> tasks.any { it.id == id && it.state == DownloadState.CANCELLED } } }
+                awaitUntil(10_000) { dm.snapshot().any { it.getId() == id && it.getState() == DownloadState.CANCELLED } }
                 assertTrue(Files.exists(target.resolveSibling("cancel.bin.part")), "取消后应保留 .part")
             }
         } finally {
@@ -134,7 +124,7 @@ class DownloadManagerTest {
     }
 
     @Test
-    fun `multiple tasks tracked concurrently`() = runBlocking {
+    fun `multiple tasks tracked concurrently`() {
         val a = ByteArray(512 * 1024)
         val b = ByteArray(768 * 1024)
         val sa = Server(a).start()
@@ -143,9 +133,9 @@ class DownloadManagerTest {
             manager().use { dm ->
                 dm.start(sa.url, dir.resolve("a.bin"))
                 dm.start(sb.url, dir.resolve("b.bin"))
-                val both = withTimeout(5_000) { dm.tasksFlow().first { it.size >= 2 } }
-                assertEquals(setOf("a.bin", "b.bin"), both.map { it.name }.toSet())
-                withTimeout(30_000) { dm.tasksFlow().first { tasks -> tasks.size == 2 && tasks.all { it.state == DownloadState.COMPLETED } } }
+                val both = dm.snapshot()
+                assertEquals(setOf("a.bin", "b.bin"), both.map { it.getName() }.toSet())
+                awaitUntil { dm.snapshot().size == 2 && dm.snapshot().all { it.getState() == DownloadState.COMPLETED } }
                 assertArrayEquals(a, Files.readAllBytes(dir.resolve("a.bin")))
                 assertArrayEquals(b, Files.readAllBytes(dir.resolve("b.bin")))
             }
@@ -161,23 +151,24 @@ class DownloadManagerTest {
         assertThrows(SecurityException::class.java) {
             dm.start("http://127.0.0.1:9999/f.bin", dir.resolve("x.bin"))
         }
-        assertTrue(runBlocking { dm.tasksFlow().value }.isEmpty())
+        assertTrue(dm.snapshot().isEmpty())
+        dm.close()
     }
 
     @Test
-    fun `trackExternal aggregates progress into same queue`() = runBlocking {
+    fun `trackExternal aggregates progress into same queue`() {
         manager().use { dm ->
             val task = dm.trackExternal("安装 9.9.9", "mojang://version/9.9.9")
-            assertEquals(1, dm.tasksFlow().value.size)
-            assertEquals("安装 9.9.9", dm.tasksFlow().value.first().name)
+            assertEquals(1, dm.snapshot().size)
+            assertEquals("安装 9.9.9", dm.snapshot().first().getName())
 
             task.update(0.5f)
-            assertEquals(0.5f, dm.tasksFlow().value.first().fraction, 0.001f)
+            assertEquals(0.5f, dm.snapshot().first().getFraction(), 0.001f)
 
             task.complete()
-            val done = dm.tasksFlow().value.first()
-            assertEquals(DownloadState.COMPLETED, done.state)
-            assertEquals(1f, done.fraction, 0.001f)
+            val done = dm.snapshot().first()
+            assertEquals(DownloadState.COMPLETED, done.getState())
+            assertEquals(1f, done.getFraction(), 0.001f)
         }
     }
 }
