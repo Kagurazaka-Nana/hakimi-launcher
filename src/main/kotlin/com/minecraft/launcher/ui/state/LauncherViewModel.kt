@@ -230,6 +230,12 @@ class LauncherViewModel(private val backend: LauncherBackend) {
 
     fun cancelDownload(id: String) = backend.cancelDownload(id)
 
+    /** 继续一个已暂停/失败的下载任务（同一 id、断点续传）。 */
+    fun resumeDownload(id: String) = backend.resumeDownload(id)
+
+    /** 从下载队列移除任务（含历史）。 */
+    fun removeDownloadTask(id: String) = backend.removeDownloadTask(id)
+
     /** 打开/关闭下载任务弹窗。 */
     fun toggleDownloadsDialog(open: Boolean) = _state.update { it.copy(showDownloadsDialog = open) }
 

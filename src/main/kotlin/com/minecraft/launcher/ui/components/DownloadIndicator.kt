@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +21,7 @@ import com.minecraft.launcher.ui.HakimiIcons
 import com.minecraft.launcher.ui.theme.HakimiIcon
 import com.minecraft.launcher.ui.theme.HakimiText
 import com.minecraft.launcher.ui.theme.HakimiTheme
+import com.minecraft.launcher.ui.theme.PixelShape
 import kotlin.math.roundToInt
 
 /**
@@ -36,9 +36,9 @@ fun DownloadIndicator(downloads: List<DownloadTask>, onClick: () -> Unit, modifi
     Row(
         modifier = modifier
             .height(34.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(PixelShape(10.dp))
             .background(c.surface)
-            .border(2.dp, c.ink, RoundedCornerShape(10.dp))
+            .border(2.dp, c.ink, PixelShape(10.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -54,9 +54,9 @@ fun DownloadIndicator(downloads: List<DownloadTask>, onClick: () -> Unit, modifi
                 modifier = Modifier
                     .width(72.dp)
                     .height(8.dp)
-                    .clip(RoundedCornerShape(3.dp))
+                    .clip(PixelShape(3.dp))
                     .background(c.surfaceMuted)
-                    .border(2.dp, c.ink, RoundedCornerShape(3.dp)),
+                    .border(2.dp, c.ink, PixelShape(3.dp)),
             ) {
                 Box(
                     modifier = Modifier

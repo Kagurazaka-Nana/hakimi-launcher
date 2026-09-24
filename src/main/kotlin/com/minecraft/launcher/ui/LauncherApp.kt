@@ -29,7 +29,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -63,6 +62,7 @@ import com.minecraft.launcher.ui.theme.HakimiSearchField
 import com.minecraft.launcher.ui.theme.HakimiTab
 import com.minecraft.launcher.ui.theme.HakimiText
 import com.minecraft.launcher.ui.theme.HakimiTheme
+import com.minecraft.launcher.ui.theme.PixelShape
 import kotlinx.coroutines.delay
 
 @Composable
@@ -151,7 +151,9 @@ fun LauncherApp(vm: LauncherViewModel) {
             if (state.showDownloadsDialog) {
                 DownloadTasksDialog(
                     tasks = state.downloads,
-                    onCancel = { vm.cancelDownload(it) },
+                    onPause = { vm.cancelDownload(it) },
+                    onResume = { vm.resumeDownload(it) },
+                    onRemove = { vm.removeDownloadTask(it) },
                     onDismiss = { vm.toggleDownloadsDialog(false) },
                 )
             }
@@ -172,9 +174,9 @@ private fun LogoBadge(modifier: Modifier = Modifier) {
         Box(
             modifier = Modifier
                 .size(26.dp)
-                .clip(RoundedCornerShape(7.dp))
+                .clip(PixelShape(7.dp))
                 .background(c.primarySoft)
-                .border(2.dp, c.ink, RoundedCornerShape(7.dp)),
+                .border(2.dp, c.ink, PixelShape(7.dp)),
         )
         HakimiText("Hakimi Launcher", style = HakimiTheme.type.title)
     }

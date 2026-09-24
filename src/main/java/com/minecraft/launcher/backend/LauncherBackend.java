@@ -28,6 +28,12 @@ public interface LauncherBackend {
     /** 取消（暂停）下载任务：保留断点，可再次发起续传。 */
     void cancelDownload(String id);
 
+    /** 继续一个已暂停/失败的下载任务（同一 id、断点续传）。 */
+    void resumeDownload(String id);
+
+    /** 从下载队列移除任务（含历史）；活跃任务先取消再移除。 */
+    void removeDownloadTask(String id);
+
     /** 设置网络代理（传输层）：enabled=false 或 host 为空表示直连；仅影响后续新连接。 */
     void setProxy(boolean enabled, String host, int port);
 

@@ -3,6 +3,7 @@ package com.minecraft.launcher.download
 import com.sun.net.httpserver.HttpServer
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -156,11 +157,52 @@ class DownloadManagerTest {
     }
 
     @Test
+    fun `resume continues a cancelled task under same id`() {
+        val data = ByteArray(4 * 1024 * 1024).also { Random(5).nextBytes(it) }
+        val server = Server(data, chunkDelayMillis = 30).start()
+        val target = dir.resolve("resume.bin")
+        try {
+            manager().use { dm ->
+                val id = dm.start(server.url, target)
+                awaitUntil(10_000) { dm.snapshot().any { it.getId() == id && it.getFraction() > 0f } }
+                dm.cancel(id)
+                awaitUntil(10_000) { dm.snapshot().any { it.getId() == id && it.getState() == DownloadState.CANCELLED } }
+
+                dm.resume(id)
+                awaitUntil(10_000) { dm.snapshot().any { it.getId() == id && (it.getState() == DownloadState.CONNECTING || it.getState() == DownloadState.DOWNLOADING) } }
+                awaitUntil(30_000) { dm.snapshot().any { it.getId() == id && it.getState() == DownloadState.COMPLETED } }
+                assertArrayEquals(data, Files.readAllBytes(target))
+            }
+        } finally {
+            server.stop()
+        }
+    }
+
+    @Test
+    fun `remove deletes task from queue and keeps part for restart`() {
+        val data = ByteArray(4 * 1024 * 1024)
+        val server = Server(data, chunkDelayMillis = 30).start()
+        val target = dir.resolve("rm.bin")
+        try {
+            manager().use { dm ->
+                val id = dm.start(server.url, target)
+                awaitUntil(10_000) { dm.snapshot().any { it.getId() == id && it.getFraction() > 0f } }
+                dm.remove(id)
+                awaitUntil(5_000) { dm.snapshot().none { it.getId() == id } }
+                assertTrue(Files.exists(target.resolveSibling("rm.bin.part")), "移除活跃任务应取消并保留 .part")
+            }
+        } finally {
+            server.stop()
+        }
+    }
+
+    @Test
     fun `trackExternal aggregates progress into same queue`() {
         manager().use { dm ->
             val task = dm.trackExternal("安装 9.9.9", "mojang://version/9.9.9")
             assertEquals(1, dm.snapshot().size)
             assertEquals("安装 9.9.9", dm.snapshot().first().getName())
+            assertFalse(dm.snapshot().first().isPauseable, "外部聚合任务不支持暂停/继续")
 
             task.update(0.5f)
             assertEquals(0.5f, dm.snapshot().first().getFraction(), 0.001f)

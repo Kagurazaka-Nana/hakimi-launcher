@@ -52,8 +52,12 @@ public final class DownloadManager implements java.io.Closeable {
     private final FileDownloader downloader;
     private final Object lock = new Object();
     private final Map<String, BitDownloader.DownloadJob> jobs = new HashMap<>();
+    /** 任务的原始请求信息（url + 目标路径），供暂停后按同一 id 续传。 */
+    private final Map<String, Request> requests = new HashMap<>();
     private List<DownloadTask> tasks = new ArrayList<>();
     private final SnapshotPublisher<List<DownloadTask>> publisher = new SnapshotPublisher<>();
+
+    private record Request(String url, Path into) {}
 
     public DownloadManager() {
         this(new BitFileDownloader());
@@ -82,6 +86,7 @@ public final class DownloadManager implements java.io.Closeable {
         String name = into.getFileName().toString();
         synchronized (lock) {
             jobs.put(id, job);
+            requests.put(id, new Request(url, into));
             tasks.add(0, new DownloadTask(id, name, url, 0f, DownloadState.DOWNLOADING));
             trimAndPublish();
         }
@@ -100,16 +105,58 @@ public final class DownloadManager implements java.io.Closeable {
         }
     }
 
+    /** 继续一个已暂停/失败的可暂停任务（同一 id、断点续传）；不满足条件时为 no-op。 */
+    public void resume(String id) {
+        BitDownloader.DownloadJob job;
+        Request req;
+        synchronized (lock) {
+            DownloadTask t = findTaskLocked(id);
+            req = requests.get(id);
+            if (t == null || req == null || !t.isPauseable() || isActive(t.getState())) {
+                return;
+            }
+            job = downloader.download(req.url(), req.into());
+            jobs.put(id, job);
+            tasks.set(tasks.indexOf(t), t.toBuilder().state(DownloadState.CONNECTING).build());
+            trimAndPublish();
+        }
+        Thread.ofVirtual().name("dl-resume-watch-" + id).start(() -> watch(id, job));
+    }
+
+    /** 从队列移除任务（含历史）；活跃任务先取消再移除（.part 保留，可重新 start）。 */
+    public void remove(String id) {
+        BitDownloader.DownloadJob job;
+        synchronized (lock) {
+            job = jobs.remove(id);
+            requests.remove(id);
+            tasks.removeIf(t -> t.getId().equals(id));
+            trimAndPublish();
+        }
+        if (job != null) {
+            job.cancel();
+        }
+    }
+
+    /** 调用方持锁：按 id 查找任务。 */
+    private DownloadTask findTaskLocked(String id) {
+        for (DownloadTask t : tasks) {
+            if (t.getId().equals(id)) {
+                return t;
+            }
+        }
+        return null;
+    }
+
     /** 切换传输层代理（host 为 null/空 表示直连）。 */
     public void setProxy(String host, int port) {
         downloader.setProxy(host, port);
     }
 
-    /** 登记一个外部编排任务（初始为下载中），返回进度句柄。 */
+    /** 登记一个外部编排任务（初始为下载中、不支持暂停/继续），返回进度句柄。 */
     public ExternalTask trackExternal(String name, String url) {
         String id = UUID.randomUUID().toString();
         synchronized (lock) {
-            tasks.add(0, new DownloadTask(id, name, url, 0f, DownloadState.DOWNLOADING));
+            tasks.add(0, new DownloadTask(id, name, url, 0f, DownloadState.DOWNLOADING, false));
             trimAndPublish();
         }
         return new ExternalTask(id);
