@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DataObject
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeveloperBoard
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Download
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Power
@@ -73,4 +75,8 @@ object HakimiIcons {
     val Cpu: ImageVector = Icons.Filled.DeveloperBoard
     val Disk: ImageVector = Icons.Filled.Storage
     val Network: ImageVector = Icons.Filled.Wifi
+
+    val Pause: ImageVector = Icons.Filled.Pause
+    val Resume: ImageVector = Icons.Filled.PlayArrow
+    val Delete: ImageVector = Icons.Filled.Delete
 }

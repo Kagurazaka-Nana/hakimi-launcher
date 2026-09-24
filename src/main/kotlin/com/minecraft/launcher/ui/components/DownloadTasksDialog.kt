@@ -11,28 +11,39 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.minecraft.launcher.backend.DownloadTask
 import com.minecraft.launcher.download.DownloadState
+import com.minecraft.launcher.ui.HakimiIcons
 import com.minecraft.launcher.ui.theme.HakimiCard
+import com.minecraft.launcher.ui.theme.HakimiIcon
 import com.minecraft.launcher.ui.theme.HakimiOverlay
 import com.minecraft.launcher.ui.theme.HakimiText
 import com.minecraft.launcher.ui.theme.HakimiTheme
+import com.minecraft.launcher.ui.theme.PixelShape
+import kotlin.math.roundToInt
 
-/** 下载任务弹窗：展示全部任务（活跃 + 历史），活跃任务可取消。 */
+/**
+ * 下载任务弹窗：展示全部任务（活跃 + 历史）。
+ * 每行仅图标操作（悬浮显示文字提示）：暂停（活跃）、继续（已暂停/失败）、删除（终态）。
+ */
 @Composable
 fun DownloadTasksDialog(
     tasks: List<DownloadTask>,
-    onCancel: (String) -> Unit,
+    onPause: (String) -> Unit,
+    onResume: (String) -> Unit,
+    onRemove: (String) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -46,7 +57,7 @@ fun DownloadTasksDialog(
                     style = HakimiTheme.type.label,
                     color = c.textMuted,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(PixelShape(6.dp))
                         .clickable(onClick = onDismiss)
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                 )
@@ -58,14 +69,14 @@ fun DownloadTasksDialog(
                     style = HakimiTheme.type.body,
                     color = c.textMuted,
                     modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
-                    align = androidx.compose.ui.text.style.TextAlign.Center,
+                    align = TextAlign.Center,
                 )
             } else {
                 Column(
                     modifier = Modifier.fillMaxWidth().height(420.dp).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    tasks.forEach { task -> TaskRow(task, onCancel) }
+                    tasks.forEach { task -> TaskRow(task, onPause, onResume, onRemove) }
                 }
             }
         }
@@ -73,7 +84,12 @@ fun DownloadTasksDialog(
 }
 
 @Composable
-private fun TaskRow(task: DownloadTask, onCancel: (String) -> Unit) {
+private fun TaskRow(
+    task: DownloadTask,
+    onPause: (String) -> Unit,
+    onResume: (String) -> Unit,
+    onRemove: (String) -> Unit,
+) {
     val c = HakimiTheme.colors
     val active = task.state == DownloadState.CONNECTING || task.state == DownloadState.DOWNLOADING
     val (label, color) = when (task.state) {
@@ -86,9 +102,9 @@ private fun TaskRow(task: DownloadTask, onCancel: (String) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(PixelShape(8.dp))
             .background(c.surfaceMuted.copy(alpha = 0.35f))
-            .border(2.dp, c.ink, RoundedCornerShape(8.dp))
+            .border(2.dp, c.ink, PixelShape(8.dp))
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -102,9 +118,9 @@ private fun TaskRow(task: DownloadTask, onCancel: (String) -> Unit) {
                 modifier = Modifier
                     .width(96.dp)
                     .height(8.dp)
-                    .clip(RoundedCornerShape(3.dp))
+                    .clip(PixelShape(3.dp))
                     .background(c.surface)
-                    .border(2.dp, c.ink, RoundedCornerShape(3.dp)),
+                    .border(2.dp, c.ink, PixelShape(3.dp)),
             ) {
                 Box(
                     modifier = Modifier
@@ -113,18 +129,33 @@ private fun TaskRow(task: DownloadTask, onCancel: (String) -> Unit) {
                         .background(c.primary),
                 )
             }
+            HakimiText("${(task.fraction * 100).roundToInt()}%", style = HakimiTheme.type.caption, color = c.text)
         }
         HakimiText(label, style = HakimiTheme.type.caption, color = color)
-        if (active) {
-            HakimiText(
-                "取消",
-                style = HakimiTheme.type.caption,
-                color = c.error,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .clickable { onCancel(task.id) }
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
-            )
+        if (active && task.isPauseable) {
+            ActionIcon(HakimiIcons.Pause, "暂停", c.primary) { onPause(task.id) }
+        }
+        if (!active && task.state != DownloadState.COMPLETED && task.isPauseable) {
+            ActionIcon(HakimiIcons.Resume, "继续", c.success) { onResume(task.id) }
+        }
+        if (!active) {
+            ActionIcon(HakimiIcons.Delete, "删除", c.error) { onRemove(task.id) }
+        }
+    }
+}
+
+/** 仅图标的行内操作按钮，悬浮显示文字提示。 */
+@Composable
+private fun ActionIcon(icon: ImageVector, tip: String, tint: Color, onClick: () -> Unit) {
+    HoverTip(label = tip) {
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(PixelShape(5.dp))
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            HakimiIcon(icon, tip, tint, size = 15.dp)
         }
     }
 }

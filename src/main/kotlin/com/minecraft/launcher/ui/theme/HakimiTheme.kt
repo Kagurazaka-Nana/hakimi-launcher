@@ -2,7 +2,7 @@ package com.minecraft.launcher.ui.theme
 
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ProvidableCompositionLocal
@@ -72,10 +72,10 @@ private val DarkColors = HakimiColors(
 
 @Immutable
 data class HakimiShapes(
-    val small: RoundedCornerShape = RoundedCornerShape(6.dp),
-    val medium: RoundedCornerShape = RoundedCornerShape(10.dp),
-    val large: RoundedCornerShape = RoundedCornerShape(14.dp),
-    val pill: RoundedCornerShape = RoundedCornerShape(8.dp),
+    val small: Shape = PixelShape(6.dp),
+    val medium: Shape = PixelShape(10.dp),
+    val large: Shape = PixelShape(14.dp),
+    val pill: Shape = PixelShape(8.dp),
 )
 
 /** 像素贴纸几何：硬描边宽度。 */

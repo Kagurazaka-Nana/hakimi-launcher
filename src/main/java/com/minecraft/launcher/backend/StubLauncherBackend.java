@@ -101,6 +101,16 @@ public final class StubLauncherBackend implements LauncherBackend {
     }
 
     @Override
+    public void resumeDownload(String id) {
+        downloads.resume(id);
+    }
+
+    @Override
+    public void removeDownloadTask(String id) {
+        downloads.remove(id);
+    }
+
+    @Override
     public void setProxy(boolean enabled, String host, int port) {
         proxyEnabled = enabled;
         proxyHost = host;

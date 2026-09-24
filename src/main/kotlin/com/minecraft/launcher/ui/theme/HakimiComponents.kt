@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
@@ -33,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -47,16 +45,21 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.composeunstyled.UnstyledButton
 
-/** 像素贴纸底：填充 + 硬描边（drawBehind，内容绘制在其上）。 */
+/** 像素贴纸底：填充 + 硬描边，阶梯角轮廓（drawBehind，内容绘制在其上）。 */
 fun Modifier.pixelSurface(
     fill: Color,
     border: Color,
     corner: Dp,
     stroke: Dp,
 ): Modifier = drawBehind {
-    val cr = CornerRadius(corner.toPx(), corner.toPx())
-    drawRoundRect(color = fill, size = size, cornerRadius = cr)
-    drawRoundRect(color = border, size = size, cornerRadius = cr, style = Stroke(width = stroke.toPx()))
+    val path = pixelPath(size, corner.toPx())
+    if (path == null) {
+        drawRect(color = fill)
+        drawRect(color = border, style = Stroke(width = stroke.toPx()))
+    } else {
+        drawPath(path, fill)
+        drawPath(path, border, style = Stroke(width = stroke.toPx()))
+    }
 }
 
 /** 像素角标：在右上/左下画小色块，呼应概念图的像素装饰。 */
@@ -233,9 +236,9 @@ fun HakimiChip(
     val clickableModifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(PixelShape(6.dp))
             .background(bg)
-            .border(2.dp, c.ink, RoundedCornerShape(6.dp))
+            .border(2.dp, c.ink, PixelShape(6.dp))
             .then(clickableModifier)
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
@@ -254,9 +257,9 @@ fun HakimiSearchField(
     val c = HakimiTheme.colors
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(PixelShape(8.dp))
             .background(c.surface)
-            .border(2.dp, c.ink, RoundedCornerShape(8.dp))
+            .border(2.dp, c.ink, PixelShape(8.dp))
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -289,9 +292,9 @@ fun HakimiProgressBar(
         modifier = modifier
             .fillMaxWidth()
             .height(10.dp)
-            .clip(RoundedCornerShape(3.dp))
+            .clip(PixelShape(3.dp))
             .background(c.surfaceMuted)
-            .border(2.dp, c.ink, RoundedCornerShape(3.dp))
+            .border(2.dp, c.ink, PixelShape(3.dp))
     ) {
         Box(
             modifier = Modifier
@@ -312,9 +315,9 @@ fun HakimiToggle(
     Box(
         modifier = modifier
             .size(width = 48.dp, height = 26.dp)
-            .clip(RoundedCornerShape(6.dp))
+            .clip(PixelShape(6.dp))
             .background(if (checked) c.primary else c.surfaceMuted)
-            .border(2.dp, c.ink, RoundedCornerShape(6.dp))
+            .border(2.dp, c.ink, PixelShape(6.dp))
             .toggleable(checked) { onCheckedChange(it) },
         contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
@@ -322,9 +325,9 @@ fun HakimiToggle(
             modifier = Modifier
                 .padding(3.dp)
                 .size(18.dp)
-                .clip(RoundedCornerShape(4.dp))
+                .clip(PixelShape(4.dp))
                 .background(c.surface)
-                .border(2.dp, c.ink, RoundedCornerShape(4.dp)),
+                .border(2.dp, c.ink, PixelShape(4.dp)),
         )
     }
 }

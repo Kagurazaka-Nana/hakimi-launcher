@@ -25,11 +25,12 @@ class DownloadTasksDialogTest {
             DownloadTask("t3", "sodium.jar", "https://cdn.modrinth.com/data/sodium.jar", 1f, DownloadState.COMPLETED),
             DownloadTask("t4", "old-partial.bin", "https://example.com/old-partial.bin", 0.3f, DownloadState.CANCELLED),
             DownloadTask("t5", "broken.bin", "https://example.com/broken.bin", 0.1f, DownloadState.FAILED),
+            DownloadTask("t6", "安装 1.21.1", "mojang://version/1.21.1", 1f, DownloadState.COMPLETED, false),
         )
         setContent {
             HakimiTheme(darkTheme = false) {
                 Box(modifier = Modifier.size(1200.dp, 760.dp)) {
-                    DownloadTasksDialog(tasks = tasks, onCancel = {}, onDismiss = {})
+                    DownloadTasksDialog(tasks = tasks, onPause = {}, onResume = {}, onRemove = {}, onDismiss = {})
                 }
             }
         }
