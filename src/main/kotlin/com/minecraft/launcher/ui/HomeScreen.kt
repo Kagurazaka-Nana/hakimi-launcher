@@ -1,9 +1,6 @@
 package com.minecraft.launcher.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,15 +16,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.toComposeImageBitmap
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.minecraft.launcher.ui.components.HoverTip
+import com.minecraft.launcher.ui.components.Wardrobe3D
 import com.minecraft.launcher.ui.state.LauncherViewModel
 import com.minecraft.launcher.ui.theme.HakimiButton
 import com.minecraft.launcher.ui.theme.HakimiCard
@@ -36,8 +26,6 @@ import com.minecraft.launcher.ui.theme.HakimiIcon
 import com.minecraft.launcher.ui.theme.HakimiSearchField
 import com.minecraft.launcher.ui.theme.HakimiText
 import com.minecraft.launcher.ui.theme.HakimiTheme
-import com.minecraft.launcher.ui.theme.PixelShape
-import kotlin.math.roundToInt
 
 /**
  * 首页：整块内容区为一张卡片（待重新设计）。
@@ -155,64 +143,12 @@ fun HomeScreen(vm: LauncherViewModel) {
                     }
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Wardrobe(state.skinPng)
+                    Wardrobe3D(state.skinPng, state.skinSlim, modifier = Modifier.size(160.dp, 320.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         HakimiChip(if (state.skinSlim) "Slim 模型" else "Classic 模型", color = HakimiTheme.colors.accent, selected = state.skinSlim)
-                        HakimiText("衣柜·皮肤正面", style = HakimiTheme.type.caption, color = HakimiTheme.colors.textMuted)
+                        HakimiText("衣柜·3D 模型", style = HakimiTheme.type.caption, color = HakimiTheme.colors.textMuted)
                     }
                 }
-            }
-        }
-    }
-}
-
-/**
- * 衣柜：长方形面板，按 8-bit 皮肤布局合成正面视图。
- * 纹理坐标 → 16×32 网格（头8 / 身12 / 腿12 高，臂宽4），见 docs/Authentication.md §2.3 表。
- */
-private val SkinFrontRegions = listOf(
-    // srcX, srcY, srcW, srcH, gridX, gridY, gridW, gridH
-    intArrayOf(8, 8, 8, 8, 4, 0, 8, 8),      // 头正面
-    intArrayOf(20, 20, 8, 12, 4, 8, 8, 12),  // 身体正面
-    intArrayOf(44, 20, 4, 12, 0, 8, 4, 12),  // 右臂正面
-    intArrayOf(40, 52, 4, 12, 12, 8, 4, 12), // 左臂正面（64x64 第二排）
-    intArrayOf(4, 20, 4, 12, 4, 20, 4, 12),  // 右腿正面
-    intArrayOf(20, 52, 4, 12, 8, 20, 4, 12), // 左腿正面（64x64 第二排）
-)
-
-@Composable
-private fun Wardrobe(png: ByteArray?, modifier: Modifier = Modifier) {
-    val c = HakimiTheme.colors
-    val bitmap = remember(png) { png?.let { org.jetbrains.skia.Image.makeFromEncoded(it).toComposeImageBitmap() } }
-    HoverTip(label = if (bitmap == null) "衣柜（暂无皮肤）" else "衣柜：当前账户皮肤正面") {
-        Box(
-            modifier = modifier
-                .size(160.dp, 320.dp)
-                .clip(PixelShape(10.dp))
-                .background(c.surfaceMuted)
-                .border(2.dp, c.ink, PixelShape(10.dp))
-                .drawBehind {
-                    val img = bitmap ?: return@drawBehind
-                    val cell = size.width / 16f
-                    for (r in SkinFrontRegions) {
-                        drawImage(
-                            image = img,
-                            dstOffset = IntOffset((r[4] * cell).roundToInt(), (r[5] * cell).roundToInt()),
-                            srcOffset = IntOffset(r[0], r[1]),
-                            srcSize = IntSize(r[2], r[3]),
-                            dstSize = IntSize((r[6] * cell).roundToInt(), (r[7] * cell).roundToInt()),
-                        )
-                    }
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            if (bitmap == null) {
-                HakimiText(
-                    "衣柜\n\n暂无皮肤\n（登录后自动加载）",
-                    style = HakimiTheme.type.caption,
-                    color = c.textMuted,
-                    align = TextAlign.Center,
-                )
             }
         }
     }
