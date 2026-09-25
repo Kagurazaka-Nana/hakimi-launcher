@@ -2,11 +2,15 @@ package com.minecraft.launcher.backend;
 
 import com.minecraft.launcher.auth.Account;
 import com.minecraft.launcher.auth.AuthInfo;
+import com.minecraft.launcher.auth.AuthenticationException;
 import com.minecraft.launcher.auth.MicrosoftAccount;
 import com.minecraft.launcher.auth.MicrosoftLoginCallback;
 import com.minecraft.launcher.auth.MicrosoftService;
 import com.minecraft.launcher.auth.OfflineAccount;
 import com.minecraft.launcher.auth.SkinService;
+import com.minecraft.launcher.auth.YggdrasilAccount;
+import com.minecraft.launcher.auth.YggdrasilLoginCallback;
+import com.minecraft.launcher.auth.YggdrasilService;
 import com.minecraft.launcher.download.BitFileDownloader;
 import com.minecraft.launcher.download.DownloadConfig;
 import com.minecraft.launcher.download.DownloadManager;
@@ -56,6 +60,7 @@ public final class StubLauncherBackend implements LauncherBackend {
     private volatile boolean stopped;
 
     private final MicrosoftService microsoftService = new MicrosoftService();
+    private final YggdrasilService yggdrasilService = new YggdrasilService();
     private final SkinService skinService = new SkinService();
     private volatile Account account;
 
@@ -199,6 +204,29 @@ public final class StubLauncherBackend implements LauncherBackend {
     }
 
     @Override
+    public void loginYggdrasil(String serverUrl, String username, String password, YggdrasilLoginCallback callback) {
+        Thread.ofVirtual().name("ygg-login").start(() -> {
+            try {
+                YggdrasilService.LoginResult result = yggdrasilService.login(serverUrl, username, password);
+                YggdrasilAccount yggAccount = new YggdrasilAccount(yggdrasilService, serverUrl, username, result);
+                account = yggAccount;
+                callback.onSuccess(yggAccount);
+            } catch (Exception e) {
+                callback.onError(e);
+            }
+        });
+    }
+
+    @Override
+    public void selectYggdrasilProfile(String profileId) throws AuthenticationException {
+        Account current = account;
+        if (!(current instanceof YggdrasilAccount ygg)) {
+            throw new AuthenticationException("当前账户不是第三方认证账户");
+        }
+        ygg.selectProfile(profileId);
+    }
+
+    @Override
     public void logout() {
         Account old = account;
         account = null;
@@ -215,6 +243,9 @@ public final class StubLauncherBackend implements LauncherBackend {
         Account current = account;
         if (current == null) {
             return null;
+        }
+        if (current instanceof YggdrasilAccount ygg) {
+            return skinService.loadSkinFrom(ygg.sessionProfileUrl());
         }
         try {
             return skinService.loadSkin(current.getProfileID());

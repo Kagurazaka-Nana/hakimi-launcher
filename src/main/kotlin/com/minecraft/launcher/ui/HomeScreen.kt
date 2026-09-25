@@ -50,6 +50,9 @@ private const val TEST_INSTALL_VERSION = "1.21.1"
 fun HomeScreen(vm: LauncherViewModel) {
     val state by vm.state.collectAsState()
     var username by remember { mutableStateOf("hakimi") }
+    var yggServer by remember { mutableStateOf("https://littleskin.cn/api/yggdrasil") }
+    var yggUser by remember { mutableStateOf("") }
+    var yggPass by remember { mutableStateOf("") }
     val installing = state.downloads.any {
         it.name == "安装 $TEST_INSTALL_VERSION" &&
             (it.state == com.minecraft.launcher.download.DownloadState.CONNECTING ||
@@ -88,6 +91,36 @@ fun HomeScreen(vm: LauncherViewModel) {
                         HakimiButton(text = "正版登录", icon = HakimiIcons.Check, onClick = { vm.beginMicrosoftLogin() })
                         if (state.accountName != null) {
                             HakimiButton(text = "登出", icon = HakimiIcons.Close, onClick = { vm.logout() })
+                        }
+                    }
+                    // 第三方 Yggdrasil 认证（密码框为明文临时区，正式设计时替换）
+                    HakimiSearchField(
+                        value = yggServer,
+                        onValueChange = { yggServer = it },
+                        placeholder = "第三方服务器 URL（如 https://littleskin.cn/api/yggdrasil）",
+                        icon = HakimiIcons.Server,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        HakimiSearchField(yggUser, { yggUser = it }, "用户名", HakimiIcons.Person, Modifier.weight(1f))
+                        HakimiSearchField(yggPass, { yggPass = it }, "密码", HakimiIcons.Skin, Modifier.weight(1f))
+                        HakimiButton(
+                            text = "第三方登录",
+                            icon = HakimiIcons.Download,
+                            onClick = { vm.loginYggdrasil(yggServer, yggUser, yggPass) },
+                        )
+                    }
+                    if (state.yggProfiles.size > 1) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            HakimiText("角色", style = HakimiTheme.type.caption, color = HakimiTheme.colors.textMuted)
+                            state.yggProfiles.forEach { p ->
+                                HakimiChip(
+                                    p.name,
+                                    color = HakimiTheme.colors.primary,
+                                    selected = p.id == state.yggSelectedId,
+                                    onClick = { vm.selectYggdrasilProfile(p.id) },
+                                )
+                            }
                         }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

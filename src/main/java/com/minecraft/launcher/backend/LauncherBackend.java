@@ -1,9 +1,11 @@
 package com.minecraft.launcher.backend;
 
 import com.minecraft.launcher.auth.Account;
+import com.minecraft.launcher.auth.AuthenticationException;
 import com.minecraft.launcher.auth.AuthInfo;
 import com.minecraft.launcher.auth.MicrosoftLoginCallback;
 import com.minecraft.launcher.auth.SkinService;
+import com.minecraft.launcher.auth.YggdrasilLoginCallback;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -55,6 +57,12 @@ public interface LauncherBackend {
 
     /** 微软设备码登录（后台线程执行，回调通知进度/结果），成功后记为当前账户。 */
     void loginMicrosoft(String clientId, MicrosoftLoginCallback callback);
+
+    /** 第三方 Yggdrasil 登录（后台线程执行），成功后记为当前账户并回调角色列表。 */
+    void loginYggdrasil(String serverUrl, String username, String password, YggdrasilLoginCallback callback);
+
+    /** 切换当前第三方账户的角色；非第三方账户或角色不匹配时抛 AuthenticationException。 */
+    void selectYggdrasilProfile(String profileId) throws AuthenticationException;
 
     /** 当前账户；未登录为 null。 */
     Account currentAccount();

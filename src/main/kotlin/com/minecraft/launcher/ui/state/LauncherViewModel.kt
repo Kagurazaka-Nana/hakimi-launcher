@@ -3,6 +3,8 @@ package com.minecraft.launcher.ui.state
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.minecraft.launcher.auth.Account
 import com.minecraft.launcher.auth.MicrosoftLoginCallback
+import com.minecraft.launcher.auth.YggdrasilAccount
+import com.minecraft.launcher.auth.YggdrasilLoginCallback
 import com.minecraft.launcher.backend.DownloadTask
 import com.minecraft.launcher.backend.GameVersion
 import com.minecraft.launcher.backend.HomeSnapshot
@@ -77,6 +79,8 @@ data class UiState(
     val loginError: String? = null,
     val skinPng: ByteArray? = null,
     val skinSlim: Boolean = false,
+    val yggProfiles: List<YggdrasilProfileInfo> = emptyList(),
+    val yggSelectedId: String? = null,
     val resources: Map<ResourceKind, List<ResourceItem>> = emptyMap(),
     val query: String = "",
     val category: String = "全部",
@@ -94,6 +98,9 @@ data class UiState(
 
 /** 微软设备码登录进行中：展示给用户输入的代码与验证地址。 */
 data class PendingDeviceCode(val userCode: String, val verificationUri: String)
+
+/** 第三方认证账户的角色信息。 */
+data class YggdrasilProfileInfo(val id: String, val name: String)
 
 /**
  * 轻量状态容器：以 [StateFlow] 暴露单一 [UiState]，
@@ -312,10 +319,52 @@ class LauncherViewModel(private val backend: LauncherBackend) {
         })
     }
 
+    /** 第三方 Yggdrasil 登录（后台线程，回调返回角色列表）。 */
+    fun loginYggdrasil(serverUrl: String, user: String, password: String) {
+        if (serverUrl.isBlank() || user.isBlank() || password.isBlank()) {
+            _state.update { it.copy(loginError = "请填写服务器地址、用户名与密码") }
+            return
+        }
+        _state.update { it.copy(loginError = null) }
+        backend.loginYggdrasil(serverUrl, user, password, object : YggdrasilLoginCallback {
+            override fun onSuccess(account: YggdrasilAccount) {
+                _state.update {
+                    it.copy(
+                        accountName = account.profileName,
+                        accountType = "第三方",
+                        deviceCode = null,
+                        loginError = null,
+                        yggProfiles = account.profiles().map { p -> YggdrasilProfileInfo(p.id(), p.name()) },
+                        yggSelectedId = account.selected().id(),
+                    )
+                }
+                refreshSkin()
+            }
+
+            override fun onError(error: Exception) {
+                _state.update { it.copy(loginError = error.message ?: error.javaClass.simpleName) }
+            }
+        })
+    }
+
+    /** 切换第三方账户角色并刷新皮肤。 */
+    fun selectYggdrasilProfile(id: String) {
+        runCatching { backend.selectYggdrasilProfile(id) }
+            .onSuccess {
+                val acc = backend.currentAccount() as? YggdrasilAccount
+                _state.update { s -> s.copy(accountName = acc?.profileName ?: s.accountName, yggSelectedId = id) }
+                refreshSkin()
+            }
+            .onFailure { e -> _state.update { it.copy(loginError = e.message ?: "角色切换失败") } }
+    }
+
     fun logout() {
         backend.logout()
         _state.update {
-            it.copy(accountName = null, accountType = null, deviceCode = null, loginError = null, skinPng = null, skinSlim = false)
+            it.copy(
+                accountName = null, accountType = null, deviceCode = null, loginError = null,
+                skinPng = null, skinSlim = false, yggProfiles = emptyList(), yggSelectedId = null,
+            )
         }
     }
 

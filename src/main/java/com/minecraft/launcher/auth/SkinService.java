@@ -37,11 +37,25 @@ public final class SkinService {
             .version(HttpClient.Version.HTTP_2)
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
+    /** SSRF 校验函数；测试注入本地回环 mock 服务器时替换为恒通过实现。 */
+    private final java.util.function.Function<String, URI> guard;
+
+    public SkinService() {
+        this(UrlGuard::validate);
+    }
+
+    public SkinService(java.util.function.Function<String, URI> guard) {
+        this.guard = guard;
+    }
 
     /** 查询角色 textures；无皮肤或角色不存在返回 empty。 */
     public Optional<Textures> fetchTextures(UUID uuid) throws IOException {
-        String url = PROFILE_URL + uuid.toString().replace("-", "");
-        UrlGuard.validate(url);
+        return fetchFromUrl(PROFILE_URL + uuid.toString().replace("-", ""));
+    }
+
+    /** 从任意 session profile 端点查询（Yggdrasil 第三方服务器与 Mojang 同构）。 */
+    public Optional<Textures> fetchFromUrl(String url) throws IOException {
+        guard.apply(url);
         try {
             HttpResponse<String> resp = http.send(
                     HttpRequest.newBuilder(URI.create(url)).GET().build(),
@@ -106,6 +120,23 @@ public final class SkinService {
         return new SkinData(downloadPng(textures.skinUrl()), textures.slim());
     }
 
+    /** 从任意 session profile 端点加载皮肤（Yggdrasil 等）；失败回退默认 Steve。 */
+    public SkinData loadSkinFrom(String profileUrl) {
+        try {
+            Optional<Textures> textures = fetchFromUrl(profileUrl);
+            if (textures.isPresent()) {
+                return new SkinData(downloadPng(textures.get().skinUrl()), textures.get().slim());
+            }
+        } catch (IOException e) {
+            // 落到默认皮肤
+        }
+        try {
+            return new SkinData(defaultSkinBytes(), false);
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
     /** 原版默认皮肤字节（Steve / classic 模型）。 */
     public static byte[] defaultSkinBytes() throws IOException {
         try (java.io.InputStream in = SkinService.class.getResourceAsStream(DEFAULT_SKIN_RESOURCE)) {
@@ -121,7 +152,7 @@ public final class SkinService {
     }
 
     private byte[] downloadPng(String url) throws IOException {
-        UrlGuard.validate(url);
+        guard.apply(url);
         try {
             HttpResponse<byte[]> resp = http.send(
                     HttpRequest.newBuilder(URI.create(url)).GET().build(),
