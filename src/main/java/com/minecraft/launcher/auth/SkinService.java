@@ -1,0 +1,122 @@
+package com.minecraft.launcher.auth;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.minecraft.launcher.download.UrlGuard;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Optional;
+import java.util.UUID;
+
+/**
+ * 皮肤服务：sessionserver 查询角色 textures（无需认证）→ base64 JSON 解析 → 下载皮肤 PNG。
+ * 下载前对 URL 过 {@link UrlGuard}（防响应注入内网地址）。
+ */
+public final class SkinService {
+
+    private static final String PROFILE_URL = "https://sessionserver.mojang.com/session/minecraft/profile/";
+    /** 皮肤 PNG 上限 1MB（原版远小于此），防异常响应耗尽内存。 */
+    private static final int MAX_SKIN_BYTES = 1 << 20;
+
+    /** 解析出的 textures 信息。 */
+    public record Textures(String skinUrl, boolean slim, String capeUrl) {}
+
+    /** 已下载皮肤数据。 */
+    public record SkinData(byte[] png, boolean slim) {}
+
+    private final ObjectMapper mapper = new ObjectMapper();
+    private final HttpClient http = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_2)
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
+
+    /** 查询角色 textures；无皮肤或角色不存在返回 empty。 */
+    public Optional<Textures> fetchTextures(UUID uuid) throws IOException {
+        String url = PROFILE_URL + uuid.toString().replace("-", "");
+        UrlGuard.validate(url);
+        try {
+            HttpResponse<String> resp = http.send(
+                    HttpRequest.newBuilder(URI.create(url)).GET().build(),
+                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (resp.statusCode() == 204 || resp.statusCode() == 404) {
+                return Optional.empty();
+            }
+            if (resp.statusCode() / 100 != 2) {
+                throw new IOException("sessionserver 响应: HTTP " + resp.statusCode());
+            }
+            return Optional.ofNullable(parseProfile(resp.body()));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("皮肤查询被中断", e);
+        }
+    }
+
+    /** 解析 sessionserver profile JSON（public 便于单测）。 */
+    public Textures parseProfile(String profileJson) throws IOException {
+        JsonNode root = mapper.readTree(profileJson);
+        JsonNode properties = root.path("properties");
+        if (!properties.isArray()) {
+            return null;
+        }
+        for (JsonNode property : properties) {
+            if (!"textures".equals(property.path("name").asText())) {
+                continue;
+            }
+            String decoded = new String(Base64.getDecoder().decode(property.path("value").asText()), StandardCharsets.UTF_8);
+            return parseTexturesJson(decoded);
+        }
+        return null;
+    }
+
+    /** 解析 base64 内的 textures JSON（public 便于单测）。 */
+    public Textures parseTextures(String texturesJson) throws IOException {
+        return parseTexturesJson(texturesJson);
+    }
+
+    private Textures parseTexturesJson(String json) throws IOException {
+        JsonNode textures = mapper.readTree(json).path("textures");
+        JsonNode skin = textures.path("SKIN");
+        if (skin.isMissingNode() || skin.path("url").isMissingNode()) {
+            return null;
+        }
+        boolean slim = "slim".equals(skin.path("metadata").path("model").asText(null));
+        String cape = textures.path("CAPE").path("url").isMissingNode() ? null : textures.path("CAPE").path("url").asText();
+        return new Textures(skin.path("url").asText(), slim, cape);
+    }
+
+    /** 完整加载：textures → 下载 PNG。无皮肤返回 null。 */
+    public SkinData loadSkin(UUID uuid) throws IOException {
+        Optional<Textures> textures = fetchTextures(uuid);
+        if (textures.isEmpty()) {
+            return null;
+        }
+        byte[] png = downloadPng(textures.get().skinUrl());
+        return new SkinData(png, textures.get().slim());
+    }
+
+    private byte[] downloadPng(String url) throws IOException {
+        UrlGuard.validate(url);
+        try {
+            HttpResponse<byte[]> resp = http.send(
+                    HttpRequest.newBuilder(URI.create(url)).GET().build(),
+                    HttpResponse.BodyHandlers.ofByteArray());
+            if (resp.statusCode() / 100 != 2) {
+                throw new IOException("皮肤下载失败: HTTP " + resp.statusCode());
+            }
+            byte[] body = resp.body();
+            if (body.length == 0 || body.length > MAX_SKIN_BYTES) {
+                throw new IOException("皮肤大小异常: " + body.length);
+            }
+            return body;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("皮肤下载被中断", e);
+        }
+    }
+}

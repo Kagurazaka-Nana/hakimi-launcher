@@ -1,6 +1,8 @@
 package com.minecraft.launcher.ui.state
 
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.minecraft.launcher.auth.Account
+import com.minecraft.launcher.auth.MicrosoftLoginCallback
 import com.minecraft.launcher.backend.DownloadTask
 import com.minecraft.launcher.backend.GameVersion
 import com.minecraft.launcher.backend.HomeSnapshot
@@ -68,6 +70,13 @@ data class UiState(
     val systemStats: SystemStats? = null,
     val downloads: List<DownloadTask> = emptyList(),
     val showDownloadsDialog: Boolean = false,
+    // —— 账户与皮肤（临时测试区，docs/Authentication.md §2.2） ——
+    val accountName: String? = null,
+    val accountType: String? = null,
+    val deviceCode: PendingDeviceCode? = null,
+    val loginError: String? = null,
+    val skinPng: ByteArray? = null,
+    val skinSlim: Boolean = false,
     val resources: Map<ResourceKind, List<ResourceItem>> = emptyMap(),
     val query: String = "",
     val category: String = "全部",
@@ -82,6 +91,9 @@ data class UiState(
     val loaders: List<LoaderOption> = emptyList(),
     val message: String? = null,
 )
+
+/** 微软设备码登录进行中：展示给用户输入的代码与验证地址。 */
+data class PendingDeviceCode(val userCode: String, val verificationUri: String)
 
 /**
  * 轻量状态容器：以 [StateFlow] 暴露单一 [UiState]，
@@ -259,6 +271,61 @@ class LauncherViewModel(private val backend: LauncherBackend) {
 
     /** 后台安装版本，进度并入下载队列（底部指示器/弹窗可见）。 */
     fun startInstall(versionId: String) = backend.startInstall(versionId)
+
+    // —— 账户与皮肤（临时测试区） ——
+
+    /** 离线登录（零网络）。 */
+    fun loginOffline(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) {
+            _state.update { it.copy(loginError = "请输入用户名") }
+            return
+        }
+        backend.loginOffline(trimmed)
+        _state.update { it.copy(accountName = trimmed, accountType = "离线", deviceCode = null, loginError = null) }
+        refreshSkin()
+    }
+
+    /** 发起微软设备码登录；client_id 取自环境变量 HAKIMI_MS_CLIENT_ID。 */
+    fun beginMicrosoftLogin() {
+        val clientId = System.getenv("HAKIMI_MS_CLIENT_ID") ?: ""
+        if (clientId.isBlank()) {
+            _state.update { it.copy(loginError = "未配置 HAKIMI_MS_CLIENT_ID 环境变量（需 Azure 注册应用）") }
+            return
+        }
+        _state.update { it.copy(loginError = null, deviceCode = null) }
+        backend.loginMicrosoft(clientId, object : MicrosoftLoginCallback {
+            override fun onDeviceCode(userCode: String, verificationUri: String) {
+                _state.update { it.copy(deviceCode = PendingDeviceCode(userCode, verificationUri), loginError = null) }
+            }
+
+            override fun onSuccess(account: Account) {
+                _state.update {
+                    it.copy(accountName = account.profileName, accountType = "正版", deviceCode = null, loginError = null)
+                }
+                refreshSkin()
+            }
+
+            override fun onError(error: Exception) {
+                _state.update { it.copy(deviceCode = null, loginError = error.message ?: error.javaClass.simpleName) }
+            }
+        })
+    }
+
+    fun logout() {
+        backend.logout()
+        _state.update {
+            it.copy(accountName = null, accountType = null, deviceCode = null, loginError = null, skinPng = null, skinSlim = false)
+        }
+    }
+
+    /** 拉取当前账户皮肤（IO 线程），失败显示占位。 */
+    fun refreshSkin() {
+        scope.launch(Dispatchers.IO) {
+            val skin = backend.loadCurrentSkin()
+            _state.update { it.copy(skinPng = skin?.png(), skinSlim = skin?.slim() ?: false) }
+        }
+    }
 
     /** 当前页面对应分类下、经搜索/筛选/排序后的可见资源。 */
     fun visibleResources(kind: ResourceKind): List<ResourceItem> {

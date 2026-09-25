@@ -1,5 +1,10 @@
 package com.minecraft.launcher.backend;
 
+import com.minecraft.launcher.auth.Account;
+import com.minecraft.launcher.auth.AuthInfo;
+import com.minecraft.launcher.auth.MicrosoftLoginCallback;
+import com.minecraft.launcher.auth.SkinService;
+
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Flow;
@@ -42,6 +47,23 @@ public interface LauncherBackend {
 
     /** 后台安装指定版本（manifest→JSON→game/assets/runtime 全链路），进度并入下载队列。 */
     void startInstall(String versionId);
+
+    // —— 账户与皮肤（docs/Authentication.md） ——
+
+    /** 离线登录（零网络），并记为当前账户。 */
+    AuthInfo loginOffline(String username);
+
+    /** 微软设备码登录（后台线程执行，回调通知进度/结果），成功后记为当前账户。 */
+    void loginMicrosoft(String clientId, MicrosoftLoginCallback callback);
+
+    /** 当前账户；未登录为 null。 */
+    Account currentAccount();
+
+    /** 登出并释放当前账户。 */
+    void logout();
+
+    /** 当前账户的皮肤（正版经 sessionserver 获取）；无皮肤/未登录为 null。 */
+    SkinService.SkinData loadCurrentSkin();
 
     /** 指定分类的资源列表 */
     List<ResourceItem> loadResources(ResourceKind kind);

@@ -1,5 +1,12 @@
 package com.minecraft.launcher.backend;
 
+import com.minecraft.launcher.auth.Account;
+import com.minecraft.launcher.auth.AuthInfo;
+import com.minecraft.launcher.auth.MicrosoftAccount;
+import com.minecraft.launcher.auth.MicrosoftLoginCallback;
+import com.minecraft.launcher.auth.MicrosoftService;
+import com.minecraft.launcher.auth.OfflineAccount;
+import com.minecraft.launcher.auth.SkinService;
 import com.minecraft.launcher.download.BitFileDownloader;
 import com.minecraft.launcher.download.DownloadConfig;
 import com.minecraft.launcher.download.DownloadManager;
@@ -47,6 +54,10 @@ public final class StubLauncherBackend implements LauncherBackend {
     private volatile int proxyPort = 10808;
     private volatile String downloadSourceKey = "official";
     private volatile boolean stopped;
+
+    private final MicrosoftService microsoftService = new MicrosoftService();
+    private final SkinService skinService = new SkinService();
+    private volatile Account account;
 
     public StubLauncherBackend() {
         Thread.ofVirtual().name("stats-loop").start(this::statsLoop);
@@ -154,6 +165,62 @@ public final class StubLauncherBackend implements LauncherBackend {
                 task.fail();
             }
         });
+    }
+
+    // —— 账户与皮肤 ——
+
+    @Override
+    public AuthInfo loginOffline(String username) {
+        OfflineAccount offline = new OfflineAccount(username);
+        account = offline;
+        return offline.logIn();
+    }
+
+    @Override
+    public void loginMicrosoft(String clientId, MicrosoftLoginCallback callback) {
+        Thread.ofVirtual().name("ms-login").start(() -> {
+            try {
+                MicrosoftService.DeviceCodeInfo dc = microsoftService.requestDeviceCode(clientId);
+                callback.onDeviceCode(dc.userCode(), dc.verificationUri());
+                MicrosoftService.LiveTokens live = microsoftService.pollForLiveTokens(clientId, dc);
+                MicrosoftService.MinecraftSession session = microsoftService.exchangeForMinecraft(live);
+                MicrosoftAccount msAccount = new MicrosoftAccount(microsoftService, clientId, session);
+                account = msAccount;
+                callback.onSuccess(msAccount);
+            } catch (Exception e) {
+                callback.onError(e);
+            }
+        });
+    }
+
+    @Override
+    public Account currentAccount() {
+        return account;
+    }
+
+    @Override
+    public void logout() {
+        Account old = account;
+        account = null;
+        if (old != null) {
+            try {
+                old.close();
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    @Override
+    public SkinService.SkinData loadCurrentSkin() {
+        Account current = account;
+        if (current == null) {
+            return null;
+        }
+        try {
+            return skinService.loadSkin(current.getProfileID());
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Override

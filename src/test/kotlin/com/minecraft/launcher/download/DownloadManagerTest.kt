@@ -117,7 +117,17 @@ class DownloadManagerTest {
                 awaitUntil(10_000) { dm.snapshot().any { it.getId() == id && it.getFraction() > 0f } }
                 dm.cancel(id)
                 awaitUntil(10_000) { dm.snapshot().any { it.getId() == id && it.getState() == DownloadState.CANCELLED } }
-                assertTrue(Files.exists(target.resolveSibling("cancel.bin.part")), "取消后应保留 .part")
+                val part = target.resolveSibling("cancel.bin.part")
+                assertTrue(Files.exists(part), "取消后应保留 .part")
+                awaitUntil(10_000) {
+                    if (!Files.exists(part)) return@awaitUntil true
+                    try {
+                        Files.delete(part)
+                        true
+                    } catch (e: java.io.IOException) {
+                        false
+                    }
+                }
             }
         } finally {
             server.stop()
@@ -189,7 +199,18 @@ class DownloadManagerTest {
                 awaitUntil(10_000) { dm.snapshot().any { it.getId() == id && it.getFraction() > 0f } }
                 dm.remove(id)
                 awaitUntil(5_000) { dm.snapshot().none { it.getId() == id } }
-                assertTrue(Files.exists(target.resolveSibling("rm.bin.part")), "移除活跃任务应取消并保留 .part")
+                val part = target.resolveSibling("rm.bin.part")
+                assertTrue(Files.exists(part), "移除活跃任务应取消并保留 .part")
+                // 取消是异步的：等文件句柄释放（可删除）再结束，避免 @TempDir 清理竞态
+                awaitUntil(10_000) {
+                    if (!Files.exists(part)) return@awaitUntil true
+                    try {
+                        Files.delete(part)
+                        true
+                    } catch (e: java.io.IOException) {
+                        false
+                    }
+                }
             }
         } finally {
             server.stop()
