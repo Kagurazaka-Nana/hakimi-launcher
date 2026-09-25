@@ -146,7 +146,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                     Wardrobe3D(state.skinPng, state.skinSlim, modifier = Modifier.size(160.dp, 320.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         HakimiChip(if (state.skinSlim) "Slim 模型" else "Classic 模型", color = HakimiTheme.colors.accent, selected = state.skinSlim)
-                        HakimiText("衣柜·3D 模型", style = HakimiTheme.type.caption, color = HakimiTheme.colors.textMuted)
+                        HakimiText("衣柜·3D 模型（拖拽旋转）", style = HakimiTheme.type.caption, color = HakimiTheme.colors.textMuted)
                     }
                 }
             }

@@ -8,10 +8,14 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,6 +25,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -97,12 +102,16 @@ fun Wardrobe3D(png: ByteArray?, slim: Boolean, modifier: Modifier = Modifier) {
     val bitmap: ImageBitmap? = remember(png) { png?.let { Image.makeFromEncoded(it).toComposeImageBitmap() } }
     val paint = remember { Paint().apply { filterQuality = FilterQuality.None } }
     val transition = rememberInfiniteTransition(label = "yaw")
-    val yawDeg by transition.animateFloat(
+    val autoYaw by transition.animateFloat(
         initialValue = 25f,
         targetValue = 335f,
         animationSpec = infiniteRepeatable(tween(14_000, easing = LinearEasing), RepeatMode.Restart),
         label = "yaw",
     )
+    // NaN = 自动旋转；首次拖拽后接管为手动
+    var manualYaw by remember { mutableStateOf(Float.NaN) }
+    var pitch by remember { mutableFloatStateOf(0f) }
+    val yaw = if (manualYaw.isNaN()) autoYaw else manualYaw
     val faces = remember(slim) { playerBoxes(slim) }
 
     Box(
@@ -110,22 +119,36 @@ fun Wardrobe3D(png: ByteArray?, slim: Boolean, modifier: Modifier = Modifier) {
             .clip(PixelShape(10.dp))
             .background(c.surfaceMuted)
             .border(2.dp, c.ink, PixelShape(10.dp))
+            .pointerInput(Unit) {
+                detectDragGestures { change, drag ->
+                    change.consume()
+                    if (manualYaw.isNaN()) manualYaw = autoYaw
+                    manualYaw = (manualYaw + drag.x * 0.4f + 360f) % 360f
+                    pitch = (pitch - drag.y * 0.25f).coerceIn(-40f, 40f)
+                }
+            }
             .drawBehind {
                 val img = bitmap ?: return@drawBehind
                 val s = size.height / 36f // 32 单位模型 + 上下留白
                 val cx = size.width / 2f
-                val rad = Math.toRadians(yawDeg.toDouble())
-                val cos = Math.cos(rad)
-                val sin = Math.sin(rad)
+                val radY = Math.toRadians(yaw.toDouble())
+                val cosY = Math.cos(radY)
+                val sinY = Math.sin(radY)
+                val radX = Math.toRadians(pitch.toDouble())
+                val cosX = Math.cos(radX)
+                val sinX = Math.sin(radX)
 
-                // 绕 y 轴旋转（z 朝观察者），正交投影：screen x = cx + x'*s，y 向下翻转
+                // 先绕 y 轴（yaw）再绕 x 轴（pitch，以模型中心 y=16 为枢轴），正交投影
                 val rot = Array(faces.size) { fi ->
                     Array(4) { i ->
                         val p = faces[fi].corners[i]
+                        val x1 = p[0] * cosY + p[2] * sinY
+                        val z1 = -p[0] * sinY + p[2] * cosY
+                        val dy = p[1] - 16.0
                         doubleArrayOf(
-                            p[0] * cos + p[2] * sin,
-                            p[1],
-                            -p[0] * sin + p[2] * cos,
+                            x1,
+                            dy * cosX - z1 * sinX + 16.0,
+                            dy * sinX + z1 * cosX,
                         )
                     }
                 }
