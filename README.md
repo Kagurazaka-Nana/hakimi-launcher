@@ -101,6 +101,23 @@ git submodule update --init --recursive
 
 这些按钮目前只调用 `StubLauncherBackend`，不会访问网络、不会写入 `.minecraft`、也不会真的拉起 Minecraft，喵。
 
+## 🐾 Wiki 百科怎么连？
+
+`hakimi-wiki/` 子模块里有一套 Kotlin (Ktor) 后端 + React 前端，启动器的 **Wiki 标签页**经 WebSocket 与后端实时互联（设计文档：`docs/Wiki.md`，本地开发手册：`hakimi-wiki/README.md`）：
+
+```bash
+# 终端 A：wiki 后端（本机 8730）
+cd hakimi-wiki/backend && ./gradlew.bat run
+
+# 终端 B（可选）：wiki Web 端（词条创建与管理员审核在这里）
+cd hakimi-wiki/frontend && npm install && npm run dev
+
+# 终端 C：启动器，打开 Wiki 标签页，顶部徽标「已连接 wiki」即打通
+./gradlew.bat run
+```
+
+后端没启动时，Wiki 页自动回退展示本地 Stub 文章，不会空页面，喵。词条（模组 / 版本 / 攻略等）在 Web 端创建，管理员审核通过后启动器端速查会自动推送更新。
+
 ## 🐾 怎么测试和构建？
 
 跑全部测试：

@@ -106,13 +106,20 @@ data class YggdrasilProfileInfo(val id: String, val name: String)
  * 轻量状态容器：以 [StateFlow] 暴露单一 [UiState]，
  * 所有交互通过方法更新状态，页面订阅 [state] 即可，保证状态流转集中、可预测。
  */
-class LauncherViewModel(private val backend: LauncherBackend) {
+class LauncherViewModel(
+    private val backend: LauncherBackend,
+    val wiki: com.minecraft.launcher.wiki.WikiClient = com.minecraft.launcher.wiki.WikiClient(),
+) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
 
+    /** wiki 服务连接状态（WebSocket，docs/Wiki.md §6）。 */
+    val wikiState: StateFlow<com.minecraft.launcher.wiki.WikiUiState> = wiki.state
+
     fun start() {
+        wiki.start()
         scope.launch {
             val home = backend.loadHome()
             val resources = ResourceKind.values().associateWith { backend.loadResources(it) }
@@ -151,7 +158,10 @@ class LauncherViewModel(private val backend: LauncherBackend) {
         }
     }
 
-    fun close() = scope.cancel()
+    fun close() {
+        wiki.stop()
+        scope.cancel()
+    }
 
     // —— 标签 / 启动台 ——
 

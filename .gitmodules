@@ -1,3 +1,6 @@
 [submodule "docs"]
 	path = docs
 	url = https://github.com/Kagurazaka-Nana/hakimi-launcher-docs.git
+[submodule "hakimi-wiki"]
+	path = hakimi-wiki
+	url = https://github.com/Hakimi-Launcher/hakimi-wiki.git
