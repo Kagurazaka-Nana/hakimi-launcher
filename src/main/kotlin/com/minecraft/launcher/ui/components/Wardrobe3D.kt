@@ -48,6 +48,7 @@ private class Face3D(
     val v: Double,
     val w: Double,
     val h: Double,
+    val overlay: Boolean = false, // 帽子/外层（同深度时后画）
 )
 
 private class Box3D(
@@ -56,50 +57,115 @@ private class Box3D(
     val z0: Double, val z1: Double,
     val u: Double, val v: Double,
 ) {
+    /** 外层（hat）盒：四周外扩 0.5 像素（参考 skinview 的 Box.extra）。 */
+    fun expanded(margin: Double = 0.5) = Box3D(
+        x0 - margin, x1 + margin, y0 - margin, y1 + margin, z0 - margin, z1 + margin, u, v,
+    )
+
     /** 按原版盒模型 UV 展开（top/bottom/front/back/right/left）。 */
-    fun faces(): List<Face3D> {
+    fun faces(overlay: Boolean = false): List<Face3D> {
         val w = x1 - x0
         val h = y1 - y0
         val d = z1 - z0
         fun dv(x: Double, y: Double, z: Double) = doubleArrayOf(x, y, z)
         return listOf(
             // top
-            Face3D(arrayOf(dv(x0, y1, z1), dv(x1, y1, z1), dv(x1, y1, z0), dv(x0, y1, z0)), u + d, v, w, d),
+            Face3D(arrayOf(dv(x0, y1, z1), dv(x1, y1, z1), dv(x1, y1, z0), dv(x0, y1, z0)), u + d, v, w, d, overlay),
             // bottom
-            Face3D(arrayOf(dv(x0, y0, z0), dv(x1, y0, z0), dv(x1, y0, z1), dv(x0, y0, z1)), u + d + w, v, w, d),
+            Face3D(arrayOf(dv(x0, y0, z0), dv(x1, y0, z0), dv(x1, y0, z1), dv(x0, y0, z1)), u + d + w, v, w, d, overlay),
             // front (+z)
-            Face3D(arrayOf(dv(x0, y1, z1), dv(x1, y1, z1), dv(x1, y0, z1), dv(x0, y0, z1)), u + d, v + d, w, h),
+            Face3D(arrayOf(dv(x0, y1, z1), dv(x1, y1, z1), dv(x1, y0, z1), dv(x0, y0, z1)), u + d, v + d, w, h, overlay),
             // back (-z)
-            Face3D(arrayOf(dv(x1, y1, z0), dv(x0, y1, z0), dv(x0, y0, z0), dv(x1, y0, z0)), u + 2 * d + w, v + d, d, h),
+            Face3D(arrayOf(dv(x1, y1, z0), dv(x0, y1, z0), dv(x0, y0, z0), dv(x1, y0, z0)), u + 2 * d + w, v + d, d, h, overlay),
             // right (+x)
-            Face3D(arrayOf(dv(x1, y1, z1), dv(x1, y1, z0), dv(x1, y0, z0), dv(x1, y0, z1)), u, v + d, d, h),
+            Face3D(arrayOf(dv(x1, y1, z1), dv(x1, y1, z0), dv(x1, y0, z0), dv(x1, y0, z1)), u, v + d, d, h, overlay),
             // left (-x)
-            Face3D(arrayOf(dv(x0, y1, z0), dv(x0, y1, z1), dv(x0, y0, z1), dv(x0, y0, z0)), u + d + w, v + d, d, h),
+            Face3D(arrayOf(dv(x0, y1, z0), dv(x0, y1, z1), dv(x0, y0, z1), dv(x0, y0, z0)), u + d + w, v + d, d, h, overlay),
         )
     }
 }
 
+/** 外层（hat）UV 原点，按部位（minecraft.wiki/w/Skin 几何规范）。 */
+private const val U_HEAD_OVERLAY = 32.0
+private const val V_HEAD_OVERLAY = 0.0
+private const val U_BODY_OVERLAY = 16.0
+private const val V_BODY_OVERLAY = 32.0
+private const val U_RARM_OVERLAY = 40.0
+private const val V_RARM_OVERLAY = 32.0
+private const val U_LARM_OVERLAY = 48.0
+private const val V_LARM_OVERLAY = 48.0
+private const val U_RLEG_OVERLAY = 0.0
+private const val V_RLEG_OVERLAY = 32.0
+private const val U_LLEG_OVERLAY = 48.0
+private const val V_LLEG_OVERLAY = 32.0
+
 private fun playerBoxes(slim: Boolean): List<Face3D> {
     val aw = if (slim) 3.0 else 4.0 // 手臂/腿宽
-    return listOf(
+    // (基础盒, 外层UV)
+    val parts = listOf(
         // 腿：y 0..12
-        Box3D(-4.0, 0.0, 0.0, 12.0, -2.0, 2.0, 0.0, 16.0),
-        Box3D(0.0, 4.0, 0.0, 12.0, -2.0, 2.0, 16.0, 48.0),
+        Triple(Box3D(-4.0, 0.0, 0.0, 12.0, -2.0, 2.0, 0.0, 16.0), U_RLEG_OVERLAY, V_RLEG_OVERLAY),
+        Triple(Box3D(0.0, 4.0, 0.0, 12.0, -2.0, 2.0, 16.0, 48.0), U_LLEG_OVERLAY, V_LLEG_OVERLAY),
         // 身体：y 12..24
-        Box3D(-4.0, 4.0, 12.0, 24.0, -2.0, 2.0, 16.0, 16.0),
+        Triple(Box3D(-4.0, 4.0, 12.0, 24.0, -2.0, 2.0, 16.0, 16.0), U_BODY_OVERLAY, V_BODY_OVERLAY),
         // 手臂：y 12..24，贴在身体两侧
-        Box3D(4.0, 4.0 + aw, 12.0, 24.0, -2.0, 2.0, 40.0, 16.0),
-        Box3D(-4.0 - aw, -4.0, 12.0, 24.0, -2.0, 2.0, 32.0, 48.0),
+        Triple(Box3D(4.0, 4.0 + aw, 12.0, 24.0, -2.0, 2.0, 40.0, 16.0), U_RARM_OVERLAY, V_RARM_OVERLAY),
+        Triple(Box3D(-4.0 - aw, -4.0, 12.0, 24.0, -2.0, 2.0, 32.0, 48.0), U_LARM_OVERLAY, V_LARM_OVERLAY),
         // 头：y 24..32
-        Box3D(-4.0, 4.0, 24.0, 32.0, -4.0, 4.0, 0.0, 0.0),
-    ).flatMap { it.faces() }
+        Triple(Box3D(-4.0, 4.0, 24.0, 32.0, -4.0, 4.0, 0.0, 0.0), U_HEAD_OVERLAY, V_HEAD_OVERLAY),
+    )
+    return parts.flatMap { (box, ou, ov) ->
+        box.faces() + box.expanded().copy(ou, ov).faces(overlay = true)
+    }
+}
+
+/** Box3D 的 UV 替换副本（外层用第二排 UV）。 */
+private fun Box3D.copy(u: Double, v: Double) = Box3D(x0, x1, y0, y1, z0, z1, u, v)
+
+/**
+ * 解码皮肤；64×32 旧皮肤按 skinview LegacySkinLayer 的镜像表补全到 64×64 第二排
+ * （左臂/左腿/头部顶底等区域水平镜像复制）。
+ */
+private val LEGACY_MIRROR_REGIONS = arrayOf(
+    // sx, sy, dx, dy, w, h（源区域 → 目标区域，水平镜像）
+    intArrayOf(0, 20, 16, 52, 12, 12),
+    intArrayOf(12, 20, 28, 52, 4, 12),
+    intArrayOf(4, 16, 20, 48, 4, 4),
+    intArrayOf(8, 16, 24, 48, 4, 4),
+    intArrayOf(40, 20, 32, 52, 12, 12),
+    intArrayOf(52, 20, 44, 52, 4, 12),
+    intArrayOf(44, 16, 36, 48, 4, 4),
+    intArrayOf(48, 16, 40, 48, 4, 4),
+)
+
+private fun decodeSkin(bytes: ByteArray): ImageBitmap {
+    val image = Image.makeFromEncoded(bytes)
+    if (image.width != 64 || image.height != 32) {
+        return image.toComposeImageBitmap()
+    }
+    val dest = org.jetbrains.skia.Bitmap().apply { allocN32Pixels(64, 64, true) }
+    val canvas = org.jetbrains.skia.Canvas(dest)
+    canvas.drawImageRect(image, org.jetbrains.skia.Rect.makeXYWH(0f, 0f, 64f, 32f), org.jetbrains.skia.Rect.makeXYWH(0f, 0f, 64f, 32f))
+    for (r in LEGACY_MIRROR_REGIONS) {
+        canvas.save()
+        // 水平镜像：平移到目标右边界并翻转 x
+        canvas.translate((r[2] + r[4]).toFloat(), r[3].toFloat())
+        canvas.scale(-1f, 1f)
+        canvas.drawImageRect(
+            image,
+            org.jetbrains.skia.Rect.makeXYWH(r[0].toFloat(), r[1].toFloat(), r[4].toFloat(), r[5].toFloat()),
+            org.jetbrains.skia.Rect.makeXYWH(0f, 0f, r[4].toFloat(), r[5].toFloat()),
+        )
+        canvas.restore()
+    }
+    return Image.makeFromBitmap(dest).toComposeImageBitmap()
 }
 
 /** 衣柜：3D 玩家模型展示（登录后的皮肤；无皮肤显示占位）。 */
 @Composable
 fun Wardrobe3D(png: ByteArray?, slim: Boolean, modifier: Modifier = Modifier) {
     val c = HakimiTheme.colors
-    val bitmap: ImageBitmap? = remember(png) { png?.let { Image.makeFromEncoded(it).toComposeImageBitmap() } }
+    val bitmap: ImageBitmap? = remember(png) { png?.let { decodeSkin(it) } }
     val paint = remember { Paint().apply { filterQuality = FilterQuality.None } }
     val transition = rememberInfiniteTransition(label = "yaw")
     val autoYaw by transition.animateFloat(
@@ -153,7 +219,8 @@ fun Wardrobe3D(png: ByteArray?, slim: Boolean, modifier: Modifier = Modifier) {
                     }
                 }
 
-                // 背面剔除：法线 z 分量（模型空间）<=0 不可见；画家算法按质心深度升序（远→近）
+                // 背面剔除：法线 z 分量（模型空间）<=0 不可见；画家算法按质心深度升序（远→近），
+                // 同深度时基础层先画、外层（hat）后画
                 val order = faces.indices.mapNotNull { fi ->
                     val r = rot[fi]
                     val e1x = r[3][0] - r[0][0]; val e1y = r[3][1] - r[0][1]
@@ -161,7 +228,7 @@ fun Wardrobe3D(png: ByteArray?, slim: Boolean, modifier: Modifier = Modifier) {
                     val nz = e1x * e2y - e1y * e2x
                     if (nz <= 0.0) return@mapNotNull null
                     fi to (r[0][2] + r[1][2] + r[2][2] + r[3][2]) / 4.0
-                }.sortedBy { it.second }
+                }.sortedWith(compareBy({ it.second }, { if (faces[it.first].overlay) 1 else 0 }))
 
                 val canvas = drawContext.canvas
                 order.forEach { (fi, _) ->
