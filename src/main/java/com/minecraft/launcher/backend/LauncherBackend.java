@@ -62,7 +62,7 @@ public interface LauncherBackend {
     /** 登出并释放当前账户。 */
     void logout();
 
-    /** 当前账户的皮肤（正版经 sessionserver 获取）；无皮肤/未登录为 null。 */
+    /** 当前账户的皮肤（正版经 sessionserver 获取，无皮肤/查询失败回退默认 Steve）；未登录为 null。 */
     SkinService.SkinData loadCurrentSkin();
 
     /** 指定分类的资源列表 */

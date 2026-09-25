@@ -21,6 +21,8 @@ import java.util.UUID;
 public final class SkinService {
 
     private static final String PROFILE_URL = "https://sessionserver.mojang.com/session/minecraft/profile/";
+    /** 原版默认皮肤（Steve，经典模型）：从客户端 jar 提取后随资源打包。 */
+    private static final String DEFAULT_SKIN_RESOURCE = "/assets/skins/steve.png";
     /** 皮肤 PNG 上限 1MB（原版远小于此），防异常响应耗尽内存。 */
     private static final int MAX_SKIN_BYTES = 1 << 20;
 
@@ -90,14 +92,32 @@ public final class SkinService {
         return new Textures(skin.path("url").asText(), slim, cape);
     }
 
-    /** 完整加载：textures → 下载 PNG。无皮肤返回 null。 */
+    /** 完整加载：textures → 下载 PNG；无皮肤/查询失败回退原版默认 Steve。 */
     public SkinData loadSkin(UUID uuid) throws IOException {
-        Optional<Textures> textures = fetchTextures(uuid);
-        if (textures.isEmpty()) {
-            return null;
+        Textures textures;
+        try {
+            textures = fetchTextures(uuid).orElse(null);
+        } catch (IOException e) {
+            textures = null; // 网络/服务异常不让衣柜空着，默认皮肤兜底
         }
-        byte[] png = downloadPng(textures.get().skinUrl());
-        return new SkinData(png, textures.get().slim());
+        if (textures == null) {
+            return new SkinData(defaultSkinBytes(), false);
+        }
+        return new SkinData(downloadPng(textures.skinUrl()), textures.slim());
+    }
+
+    /** 原版默认皮肤字节（Steve / classic 模型）。 */
+    public static byte[] defaultSkinBytes() throws IOException {
+        try (java.io.InputStream in = SkinService.class.getResourceAsStream(DEFAULT_SKIN_RESOURCE)) {
+            if (in == null) {
+                throw new IOException("缺少默认皮肤资源 " + DEFAULT_SKIN_RESOURCE);
+            }
+            byte[] bytes = in.readAllBytes();
+            if (bytes.length == 0 || bytes.length > MAX_SKIN_BYTES) {
+                throw new IOException("默认皮肤资源大小异常: " + bytes.length);
+            }
+            return bytes;
+        }
     }
 
     private byte[] downloadPng(String url) throws IOException {

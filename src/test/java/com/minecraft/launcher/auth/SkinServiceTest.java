@@ -53,4 +53,14 @@ class SkinServiceTest {
     void profileWithoutSkinUrlReturnsNull() throws Exception {
         assertNull(service.parseProfile(profileJson("{\"textures\":{}}")));
     }
+
+    @Test
+    void defaultSkinResourceIsPng() throws Exception {
+        byte[] png = SkinService.defaultSkinBytes();
+        assertTrue(png.length > 0 && png.length < 64 * 1024);
+        assertEquals((byte) 0x89, png[0]);
+        assertEquals((byte) 'P', png[1]);
+        assertEquals((byte) 'N', png[2]);
+        assertEquals((byte) 'G', png[3]);
+    }
 }

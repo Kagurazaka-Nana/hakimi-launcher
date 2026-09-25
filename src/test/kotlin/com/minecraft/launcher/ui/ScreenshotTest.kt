@@ -37,6 +37,21 @@ class ScreenshotTest {
     }
 
     @Test
+    fun homeOfflineLoginShowsDefaultSteve() = runDesktopComposeUiTest {
+        val vm = newVm()
+        waitUntil(timeoutMillis = 10_000L) { vm.state.value.home != null && vm.state.value.systemStats != null }
+        vm.loginOffline("hakimi")
+        // 离线账户 sessionserver 查不到皮肤 → 默认 Steve 兜底
+        waitUntil(timeoutMillis = 10_000L) { vm.state.value.skinPng != null }
+        setContent {
+            Box(modifier = Modifier.size(1200.dp, 760.dp)) { LauncherApp(vm) }
+        }
+        waitForIdle()
+        captureToImage().captureRoboImage("build/roborazzi/home-steve.png")
+        vm.close()
+    }
+
+    @Test
     fun homeDark() = runDesktopComposeUiTest {
         val vm = newVm()
         waitUntil(timeoutMillis = 10_000L) { vm.state.value.home != null && vm.state.value.systemStats != null }

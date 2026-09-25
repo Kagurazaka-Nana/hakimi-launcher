@@ -219,7 +219,11 @@ public final class StubLauncherBackend implements LauncherBackend {
         try {
             return skinService.loadSkin(current.getProfileID());
         } catch (Exception e) {
-            return null;
+            try {
+                return new SkinService.SkinData(SkinService.defaultSkinBytes(), false);
+            } catch (Exception ignored) {
+                return null;
+            }
         }
     }
 
